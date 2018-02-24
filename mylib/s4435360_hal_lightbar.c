@@ -97,13 +97,14 @@ void lightbar_seg_set(int segment, unsigned char segment_value) {
   * @param  None
   * @retval None
   */
-extern void s4435360_lightbar_init(void) {
+void s4435360_lightbar_init(void) {
 
 	GPIO_InitTypeDef GPIO_Init;
 
 	__GPIOA_CLK_ENABLE();
 	__GPIOC_CLK_ENABLE();
 	__GPIOD_CLK_ENABLE();
+	__GPIOB_CLK_ENABLE();
 
 	/* Configure pins D0 to D9 as output*/
 	GPIO_Init.Pin = BRD_D16_PIN;
@@ -172,7 +173,7 @@ extern void s4435360_lightbar_init(void) {
  * @param
  * @retval
  */
-extern void s4435360_lightbar_deinit(void) {
+void s4435360_lightbar_deinit(void) {
 
 	HAL_GPIO_DeInit(BRD_D16_GPIO_PORT, 16);
 	HAL_GPIO_DeInit(BRD_D17_GPIO_PORT, 17);
@@ -195,7 +196,7 @@ extern void s4435360_lightbar_deinit(void) {
   * @param  value
   * @retval None
   */
-extern void s4435360_lightbar_write(unsigned short value) {
+void s4435360_lightbar_write(unsigned short value) {
 
 	int segmentValue;
 
@@ -206,15 +207,6 @@ extern void s4435360_lightbar_write(unsigned short value) {
 	}
 }
 
-int main(void) {
-	BRD_init();			//Initialise NP2 board.
-	s4435360_lightbar_init();
 
-	while(1) {
-		s4435360_lightbar_write((unsigned short) 0b0101010101);
-		HAL_Delay(1000);
-		s4435360_lightbar_write((unsigned short) 0b1010101010);
-		HAL_Delay(1000);
-	}
-}
+
 

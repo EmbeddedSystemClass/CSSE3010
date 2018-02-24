@@ -26,11 +26,11 @@
 
 /* External function prototypes -----------------------------------------------*/
 
-extern void s4435360_lightbar_init(void);
+void s4435360_lightbar_init(void);
 
-extern void s4435360_lightbar_deinit(void);
+void s4435360_lightbar_deinit(void);
 
-extern void s4435360_lightbar_write(unsigned short value);
+void s4435360_lightbar_write(unsigned short value);
 
 #endif
 
