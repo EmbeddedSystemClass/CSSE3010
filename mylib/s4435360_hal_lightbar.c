@@ -17,7 +17,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include <s4435360_hal_lightbar.h>
 
-//#include "sideboard.h"
 #include "stm32f4xx_hal_conf.h"
 #include "debug_printf.h"
 #include "stm32f4xx_hal_gpio.h"
@@ -25,13 +24,14 @@
 #include "stm32f4xx.h"
 #include "board.h"
 
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
 const int numberLEDs = 10;
 
-
+/**
+ * @brief	Writes the specified segment_value
+ * 			to the specified segment
+ * @param	segment, segment_value
+ * @retval 	None
+ */
 void lightbar_seg_set(int segment, unsigned char segment_value) {
 
 	switch(segment) {
@@ -206,7 +206,3 @@ void s4435360_lightbar_write(unsigned short value) {
 		value >>= 1; //Shift new last bit
 	}
 }
-
-
-
-

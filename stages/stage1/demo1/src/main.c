@@ -12,44 +12,45 @@
 #include "debug_printf.h"
 #include "s4435360_hal_lightbar.h"
 
-/* Includes ------------------------------------------------------------------*/
 
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-/* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
+#define SHIFT_RIGHT(value) value = value << 1;
+#define SHIFT_LEFT(value) value = value >> 1;
+
+const int leftEdge = 3;
+const int rightEdge = 768;
+const int shortestDelay = 100;
+const int longestDelay = 1000;
+const uint32_t DEBOUNCE_THRESHOLD = 100;
+
+uint32_t lastInterruptTime = 0;
+volatile int delayTime = 1000;
+volatile int isSlowingDown = 0;
+
+void hardware_init();
 
 /**
  * @brief  Main program
  * @param  None
  * @retval None
  */
-#define SHIFT_RIGHT(value) value = value << 1;
-#define SHIFT_LEFT(value) value = value >> 1;
 
 int main(void) {
 
 	//Init hardware
 	BRD_init();
+	hardware_init();
 	s4435360_lightbar_init();
 
-
-	int isShiftingRight = 1;
-	int rightEdge = 768;
-	int leftEdge = 0x03;
-
-	unsigned short displayValue = leftEdge;
-
-	s4435360_lightbar_write(0xFFFF);
-	HAL_Delay(1000);
-	s4435360_lightbar_write(0x00);
-
-	s4435360_lightbar_write(displayValue);
+	int isShiftingRight = 0;
+	unsigned short displayValue = (unsigned short) leftEdge;
 
 	while(1) {
-		HAL_Delay(1000);
+		debug_printf("0x%04x\n\r", displayValue);
+		s4435360_lightbar_write(displayValue);
+
+		if((displayValue == leftEdge) || (displayValue == rightEdge)) {
+			isShiftingRight = 1 - isShiftingRight;
+		}
 
 		if(isShiftingRight) {
 			SHIFT_RIGHT(displayValue);
@@ -57,11 +58,48 @@ int main(void) {
 			SHIFT_LEFT(displayValue);
 		}
 
-		s4435360_lightbar_write(displayValue);
+		HAL_Delay(delayTime);
 
-		if((displayValue == leftEdge) || (displayValue == rightEdge)) {
-			isShiftingRight = 1 - isShiftingRight;
+	}
+}
+
+void hardware_init(void) {
+	GPIO_InitTypeDef GPIO_InitStructure;
+
+	BRD_USER_BUTTON_GPIO_CLK_ENABLE();
+
+	GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
+	GPIO_InitStructure.Pull = GPIO_NOPULL;
+	GPIO_InitStructure.Pin  = BRD_USER_BUTTON_PIN;
+	HAL_GPIO_Init(BRD_USER_BUTTON_GPIO_PORT, &GPIO_InitStructure);
+
+	HAL_NVIC_SetPriority(BRD_USER_BUTTON_EXTI_IRQn, 10, 0);
+	HAL_NVIC_EnableIRQ(BRD_USER_BUTTON_EXTI_IRQn);
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	uint32_t currentTime = HAL_GetTick();
+
+	if(currentTime - lastInterruptTime >= DEBOUNCE_THRESHOLD) {
+
+		//Button pressed
+		if(isSlowingDown) {
+			SHIFT_RIGHT(delayTime);
+		} else {
+			SHIFT_LEFT(delayTime);
+		}
+
+		if((delayTime >= longestDelay) || (delayTime <= shortestDelay)) {
+			isSlowingDown = 1 - isSlowingDown;
 		}
 
 	}
+
+	lastInterruptTime = currentTime;
+}
+
+
+//Override default mapping of this handler to Default_Handler
+void EXTI15_10_IRQHandler(void) {
+	HAL_GPIO_EXTI_IRQHandler(BRD_USER_BUTTON_PIN);
 }
