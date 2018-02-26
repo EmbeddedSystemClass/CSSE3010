@@ -12,7 +12,6 @@
 #include "debug_printf.h"
 #include "s4435360_hal_lightbar.h"
 
-
 #define SHIFT_RIGHT(value) value = value << 1;
 #define SHIFT_LEFT(value) value = value >> 1;
 
@@ -20,9 +19,9 @@ const int leftEdge = 3;
 const int rightEdge = 768;
 const int shortestDelay = 100;
 const int longestDelay = 1000;
-const uint32_t DEBOUNCE_THRESHOLD = 100;
+const uint32_t debounceThreshold = 100;
 
-uint32_t lastInterruptTime = 0;
+volatile uint32_t lastInterruptTime = 0;
 volatile int delayTime = 1000;
 volatile int isSlowingDown = 0;
 
@@ -33,7 +32,6 @@ void hardware_init();
  * @param  None
  * @retval None
  */
-
 int main(void) {
 
 	//Init hardware
@@ -45,6 +43,7 @@ int main(void) {
 	unsigned short displayValue = (unsigned short) leftEdge;
 
 	while(1) {
+
 		debug_printf("0x%04x\n\r", displayValue);
 		s4435360_lightbar_write(displayValue);
 
@@ -63,7 +62,14 @@ int main(void) {
 	}
 }
 
+/**
+ * @brief Initialises the additional hardware for this demo,
+ * 			the user button
+ * @param None
+ * @retval None
+ */
 void hardware_init(void) {
+
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	BRD_USER_BUTTON_GPIO_CLK_ENABLE();
@@ -77,10 +83,16 @@ void hardware_init(void) {
 	HAL_NVIC_EnableIRQ(BRD_USER_BUTTON_EXTI_IRQn);
 }
 
+/**
+ * @brief EXTI line detection callback
+ * @param GPIO_Pin: Specifies the pins connected EXTI line
+ * @retval None
+ */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+
 	uint32_t currentTime = HAL_GetTick();
 
-	if(currentTime - lastInterruptTime >= DEBOUNCE_THRESHOLD) {
+	if(currentTime - lastInterruptTime >= debounceThreshold) {
 
 		//Button pressed
 		if(isSlowingDown) {
@@ -97,7 +109,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 	lastInterruptTime = currentTime;
 }
-
 
 //Override default mapping of this handler to Default_Handler
 void EXTI15_10_IRQHandler(void) {

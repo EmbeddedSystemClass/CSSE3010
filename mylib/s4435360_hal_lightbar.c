@@ -37,52 +37,52 @@ void lightbar_seg_set(int segment, unsigned char segment_value) {
 	switch(segment) {
 		case 0:
 
-			HAL_GPIO_WritePin(BRD_D16_GPIO_PORT, BRD_D16_PIN, segment_value);
+			HAL_GPIO_WritePin(LIGHTBAR_PIN0_PORT, LIGHTBAR_PIN0, segment_value);
 			break;
 
 		case 1:
 
-			HAL_GPIO_WritePin(BRD_D17_GPIO_PORT, BRD_D17_PIN, segment_value);
+			HAL_GPIO_WritePin(LIGHTBAR_PIN1_PORT, LIGHTBAR_PIN1, segment_value);
 			break;
 
 		case 2:
 
-			HAL_GPIO_WritePin(BRD_D18_GPIO_PORT, BRD_D18_PIN, segment_value);
+			HAL_GPIO_WritePin(LIGHTBAR_PIN2_PORT, LIGHTBAR_PIN2, segment_value);
 			break;
 
 		case 3:
 
-			HAL_GPIO_WritePin(BRD_D19_GPIO_PORT, BRD_D19_PIN, segment_value);
+			HAL_GPIO_WritePin(LIGHTBAR_PIN3_PORT, LIGHTBAR_PIN3, segment_value);
 			break;
 
 		case 4:
 
-			HAL_GPIO_WritePin(BRD_D20_GPIO_PORT, BRD_D20_PIN, segment_value);
+			HAL_GPIO_WritePin(LIGHTBAR_PIN4_PORT, LIGHTBAR_PIN4, segment_value);
 			break;
 
 		case 5:
 
-			HAL_GPIO_WritePin(BRD_D21_GPIO_PORT, BRD_D21_PIN, segment_value);
+			HAL_GPIO_WritePin(LIGHTBAR_PIN5_PORT, LIGHTBAR_PIN5, segment_value);
 			break;
 
 		case 6:
 
-			HAL_GPIO_WritePin(BRD_D22_GPIO_PORT, BRD_D22_PIN, segment_value);
+			HAL_GPIO_WritePin(LIGHTBAR_PIN6_PORT, LIGHTBAR_PIN6, segment_value);
 			break;
 
 		case 7:
 
-			HAL_GPIO_WritePin(BRD_D23_GPIO_PORT, BRD_D23_PIN, segment_value);
+			HAL_GPIO_WritePin(LIGHTBAR_PIN7_PORT, LIGHTBAR_PIN7, segment_value);
 			break;
 
 		case 8:
 
-			HAL_GPIO_WritePin(BRD_D24_GPIO_PORT, BRD_D24_PIN, segment_value);
+			HAL_GPIO_WritePin(LIGHTBAR_PIN8_PORT, LIGHTBAR_PIN8, segment_value);
 			break;
 
 		case 9:
 
-			HAL_GPIO_WritePin(BRD_D25_GPIO_PORT, BRD_D25_PIN, segment_value);
+			HAL_GPIO_WritePin(LIGHTBAR_PIN9_PORT, LIGHTBAR_PIN9, segment_value);
 			break;
 
 		default:
@@ -101,90 +101,102 @@ void s4435360_lightbar_init(void) {
 
 	GPIO_InitTypeDef GPIO_Init;
 
-	__GPIOA_CLK_ENABLE();
-	__GPIOC_CLK_ENABLE();
-	__GPIOD_CLK_ENABLE();
-	__GPIOB_CLK_ENABLE();
-
-	/* Configure pins D0 to D9 as output*/
-	GPIO_Init.Pin = BRD_D16_PIN;
-	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_Init.Pull = GPIO_PULLUP;
-	GPIO_Init.Speed = GPIO_SPEED_FAST;
-	HAL_GPIO_Init(BRD_D16_GPIO_PORT, &GPIO_Init);
-
-	GPIO_Init.Pin = BRD_D17_PIN;
-	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_Init.Pull = GPIO_PULLUP;
-	GPIO_Init.Speed = GPIO_SPEED_FAST;
-	HAL_GPIO_Init(BRD_D17_GPIO_PORT, &GPIO_Init);
-
-	GPIO_Init.Pin = BRD_D18_PIN;
-	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_Init.Pull = GPIO_PULLUP;
-	GPIO_Init.Speed = GPIO_SPEED_FAST;
-	HAL_GPIO_Init(BRD_D18_GPIO_PORT, &GPIO_Init);
-
-	GPIO_Init.Pin = BRD_D19_PIN;
-	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_Init.Pull = GPIO_PULLUP;
-	GPIO_Init.Speed = GPIO_SPEED_FAST;
-	HAL_GPIO_Init(BRD_D19_GPIO_PORT, &GPIO_Init);
-
-	GPIO_Init.Pin = BRD_D20_PIN;
+/*	__GPIOA_CLK_ENABLE();
+	GPIO_Init.Pin = BRD_D20_PIN | BRD_D24_PIN;
 	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_Init.Pull = GPIO_PULLUP;
 	GPIO_Init.Speed = GPIO_SPEED_FAST;
 	HAL_GPIO_Init(BRD_D20_GPIO_PORT, &GPIO_Init);
-
-	GPIO_Init.Pin = BRD_D21_PIN;
-	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_Init.Pull = GPIO_PULLUP;
-	GPIO_Init.Speed = GPIO_SPEED_FAST;
-	HAL_GPIO_Init(BRD_D21_GPIO_PORT, &GPIO_Init);
-
-	GPIO_Init.Pin = BRD_D22_PIN;
-	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_Init.Pull = GPIO_PULLUP;
-	GPIO_Init.Speed = GPIO_SPEED_FAST;
-	HAL_GPIO_Init(BRD_D22_GPIO_PORT, &GPIO_Init);
-
-	GPIO_Init.Pin = BRD_D23_PIN;
-	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_Init.Pull = GPIO_PULLUP;
-	GPIO_Init.Speed = GPIO_SPEED_FAST;
-	HAL_GPIO_Init(BRD_D23_GPIO_PORT, &GPIO_Init);
-
-	GPIO_Init.Pin = BRD_D24_PIN;
-	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_Init.Pull = GPIO_PULLUP;
-	GPIO_Init.Speed = GPIO_SPEED_FAST;
 	HAL_GPIO_Init(BRD_D24_GPIO_PORT, &GPIO_Init);
 
-	GPIO_Init.Pin = BRD_D25_PIN;
+	__GPIOB_CLK_ENABLE();
+	GPIO_Init.Pin = BRD_D17_PIN | BRD_D18_PIN | BRD_D19_PIN | BRD_D22_PIN | BRD_D23_PIN | BRD_D25_PIN;
 	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_Init.Pull = GPIO_PULLUP;
 	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(BRD_D17_GPIO_PORT, &GPIO_Init);
+	HAL_GPIO_Init(BRD_D18_GPIO_PORT, &GPIO_Init);
+	HAL_GPIO_Init(BRD_D19_GPIO_PORT, &GPIO_Init);
+	HAL_GPIO_Init(BRD_D22_GPIO_PORT, &GPIO_Init);
+	HAL_GPIO_Init(BRD_D23_GPIO_PORT, &GPIO_Init);
 	HAL_GPIO_Init(BRD_D25_GPIO_PORT, &GPIO_Init);
-}
 
-/**
- * @brief Deinitialise the LEDBar
- * @param
- * @retval
- */
-void s4435360_lightbar_deinit(void) {
 
-	HAL_GPIO_DeInit(BRD_D16_GPIO_PORT, 16);
-	HAL_GPIO_DeInit(BRD_D17_GPIO_PORT, 17);
-	HAL_GPIO_DeInit(BRD_D18_GPIO_PORT, 18);
-	HAL_GPIO_DeInit(BRD_D19_GPIO_PORT, 19);
-	HAL_GPIO_DeInit(BRD_D20_GPIO_PORT, 20);
-	HAL_GPIO_DeInit(BRD_D21_GPIO_PORT, 21);
-	HAL_GPIO_DeInit(BRD_D22_GPIO_PORT, 22);
-	HAL_GPIO_DeInit(BRD_D23_GPIO_PORT, 23);
-	HAL_GPIO_DeInit(BRD_D24_GPIO_PORT, 24);
-	HAL_GPIO_DeInit(BRD_D25_GPIO_PORT, 25);
+	__GPIOC_CLK_ENABLE();
+	GPIO_Init.Pin = BRD_D16_PIN | BRD_D21_PIN;
+	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_Init.Pull = GPIO_PULLUP;
+	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(BRD_D16_GPIO_PORT, &GPIO_Init);
+	HAL_GPIO_Init(BRD_D21_GPIO_PORT, &GPIO_Init);*/
+
+
+
+	__GPIOA_CLK_ENABLE();
+	__GPIOB_CLK_ENABLE();
+	__GPIOC_CLK_ENABLE();
+
+	GPIO_Init.Pin = LIGHTBAR_PIN0;
+	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_Init.Pull = GPIO_PULLUP;
+	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(LIGHTBAR_PIN0_PORT, &GPIO_Init);
+
+	GPIO_Init.Pin = LIGHTBAR_PIN1;
+	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_Init.Pull = GPIO_PULLUP;
+	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(LIGHTBAR_PIN1_PORT, &GPIO_Init);
+
+	GPIO_Init.Pin = LIGHTBAR_PIN2;
+	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_Init.Pull = GPIO_PULLUP;
+	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(LIGHTBAR_PIN2_PORT, &GPIO_Init);
+
+	GPIO_Init.Pin = LIGHTBAR_PIN3;
+	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_Init.Pull = GPIO_PULLUP;
+	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(LIGHTBAR_PIN3_PORT, &GPIO_Init);
+
+	GPIO_Init.Pin = LIGHTBAR_PIN4;
+	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_Init.Pull = GPIO_PULLUP;
+	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(LIGHTBAR_PIN4_PORT, &GPIO_Init);
+
+	GPIO_Init.Pin = LIGHTBAR_PIN5;
+	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_Init.Pull = GPIO_PULLUP;
+	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(LIGHTBAR_PIN5_PORT, &GPIO_Init);
+
+	GPIO_Init.Pin = LIGHTBAR_PIN6;
+	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_Init.Pull = GPIO_PULLUP;
+	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(LIGHTBAR_PIN6_PORT, &GPIO_Init);
+
+	GPIO_Init.Pin = LIGHTBAR_PIN7;
+	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_Init.Pull = GPIO_PULLUP;
+	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(LIGHTBAR_PIN7_PORT, &GPIO_Init);
+
+	GPIO_Init.Pin = LIGHTBAR_PIN8;
+	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_Init.Pull = GPIO_PULLUP;
+	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(LIGHTBAR_PIN8_PORT, &GPIO_Init);
+
+	GPIO_Init.Pin = LIGHTBAR_PIN9;
+	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_Init.Pull = GPIO_PULLUP;
+	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(LIGHTBAR_PIN9_PORT, &GPIO_Init);
+
+
 
 }
 
