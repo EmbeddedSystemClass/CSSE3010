@@ -39,6 +39,7 @@ const int numberLEDs = 10; //Number of LEDs on lightbar
  */
 void lightbar_seg_set(int segment, unsigned char segment_value) {
 
+	/* Write value to appropriate pin */
 	switch(segment) {
 		case 0:
 
@@ -183,6 +184,7 @@ void s4435360_lightbar_write(unsigned short value) {
 
 	int segmentValue;
 
+	/* Write each value */
 	for(int segment = 0; segment < numberLEDs; segment++) {
 
 		segmentValue = value & 0x01; //Isolate last bit

@@ -47,15 +47,18 @@ int main(void) {
 	int isShiftingRight = 0;
 	unsigned short displayValue = (unsigned short) leftEdge;
 
+	/* Main loop */
 	while(1) {
 
 		debug_printf("0x%04x\n\r", displayValue);
 		s4435360_lightbar_write(displayValue);
 
+		/* Check for touching edges */
 		if((displayValue == leftEdge) || (displayValue == rightEdge)) {
 			isShiftingRight = 1 - isShiftingRight;
 		}
 
+		/* Shift appropriate direction */
 		if(isShiftingRight) {
 			SHIFT_RIGHT(displayValue);
 		} else {
@@ -97,15 +100,17 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 	uint32_t currentTime = HAL_GetTick();
 
+	/* Check time since last interrupt, to debounce */
 	if(currentTime - lastInterruptTime >= debounceThreshold) {
 
-		//Button pressed
+		/* Shift delay appropriate direction */
 		if(isSlowingDown) {
 			SHIFT_RIGHT(delayTime);
 		} else {
 			SHIFT_LEFT(delayTime);
 		}
 
+		/* Check for delay length boundaries */
 		if((delayTime >= longestDelay) || (delayTime <= shortestDelay)) {
 			isSlowingDown = 1 - isSlowingDown;
 		}
@@ -115,7 +120,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	lastInterruptTime = currentTime;
 }
 
-//Override default mapping of this handler to Default_Handler
+/* Override default mapping of this handler to Default_Handler */
 void EXTI15_10_IRQHandler(void) {
 	HAL_GPIO_EXTI_IRQHandler(BRD_USER_BUTTON_PIN);
 }
