@@ -2,11 +2,10 @@
  ******************************************************************************
  * @file    mylib/s4435360_ledbar.h
  * @author  Samuel Eadie - 44353607
- * @date    27022018
+ * @date    21022018-28022018
  * @brief   LED Light Bar peripheral driver
  *	     REFERENCE: LEDLightBar_datasheet.pdf
  *
- *			NOTE: REPLACE s4435360 with your student login.
  ******************************************************************************
  *     EXTERNAL FUNCTIONS
  ******************************************************************************

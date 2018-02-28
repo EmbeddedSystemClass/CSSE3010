@@ -2,35 +2,30 @@
  ******************************************************************************
  * @file    demo1/main.c
  * @author  SE
- * @date    21022018-28022018
+ * @date    23022018
  * @brief   Demonstrate light bar functionality
  ******************************************************************************
  *
  */
-/* Includes ------------------------------------------------------------------*/
 #include "board.h"
 #include "stm32f4xx_hal_conf.h"
 #include "debug_printf.h"
 #include "s4435360_hal_lightbar.h"
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
+
 #define SHIFT_RIGHT(value) value = value << 1;
 #define SHIFT_LEFT(value) value = value >> 1;
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-const int leftEdge = 3; //Display value of lightbar left edge
-const int rightEdge = 768; //Display value of lightbar right edge
-const int shortestDelay = 100; //Shortest delay allowed
-const int longestDelay = 1000; //Longest delay allowed
-const uint32_t debounceThreshold = 100; //Time threshold to debounce signal
 
-volatile uint32_t lastInterruptTime = 0; //Time of the last button interrupt
-volatile int delayTime = 1000; //The current delay time for the lightbar
-volatile int isSlowingDown = 0; //Whether the lightbar is slowing
+const int leftEdge = 3;
+const int rightEdge = 768;
+const int shortestDelay = 100;
+const int longestDelay = 1000;
+const uint32_t debounceThreshold = 100;
 
-/* Private function prototypes -----------------------------------------------*/
+volatile uint32_t lastInterruptTime = 0;
+volatile int delayTime = 1000;
+volatile int isSlowingDown = 0;
+
 void hardware_init();
-/* Private functions ---------------------------------------------------------*/
 
 /**
  * @brief  Main program
