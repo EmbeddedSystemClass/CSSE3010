@@ -20,6 +20,7 @@
 /* Private variables ---------------------------------------------------------*/
 const int leftEdge = 3; //Display value of lightbar left edge
 const int rightEdge = 768; //Display value of lightbar right edge
+#define RIGHT_EDGE 768 //Replace const int to macros and replace decimal with hex
 const int shortestDelay = 100; //Shortest delay allowed
 const int longestDelay = 1000; //Longest delay allowed
 const uint32_t debounceThreshold = 100; //Time threshold to debounce signal
@@ -54,7 +55,7 @@ int main(void) {
 		s4435360_lightbar_write(displayValue);
 
 		/* Check for touching edges */
-		if((displayValue == leftEdge) || (displayValue == rightEdge)) {
+		if((displayValue == leftEdge) || (displayValue == RIGHT_EDGE)) {
 			isShiftingRight = 1 - isShiftingRight;
 		}
 

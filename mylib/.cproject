@@ -64,7 +64,6 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
-					<fileInfo id="fr.ac6.managedbuild.config.gnu.cross.lib.debug.64229838.554259226" name="sxxxxxxx_hal_lightbar.h" rcbsApplicability="disable" resourcePath="s4435360_hal_lightbar.h" toolsToInvoke=""/>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>

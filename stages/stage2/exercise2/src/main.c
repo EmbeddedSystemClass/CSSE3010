@@ -7,6 +7,7 @@
  ******************************************************************************
  *
  */
+#include "stdio.h"
 #include "board.h"
 #include "stm32f4xx_hal_conf.h"
 #include "debug_printf.h"
@@ -14,11 +15,11 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
-#define PERIOD 5000
+#define PERIOD 60
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef TIM_Init;
-int count_interrupt;
+volatile int toggleValue = 0;
 /* Private function prototypes -----------------------------------------------*/
 void Hardware_init(void);
 void TIM2_IRQHandler(void);
@@ -35,7 +36,7 @@ int main(void) {
 
 	/* Infinite loop */
 	while (1) {
-		//Do nothing - wait for interrupts to triggerg  jg
+		//Do nothing - wait for interrupts to trigger
 	}
 }
 
@@ -47,13 +48,6 @@ int main(void) {
 void Hardware_init(void) {
 
 	unsigned short PrescalerValue;
-
-	BRD_LEDInit();	//Initialise LEDs
-
-	/* Turn off LEDs */
-	BRD_LEDRedOff();
-	BRD_LEDGreenOff();
-	BRD_LEDBlueOff();
 
 	// Timer 2 clock enable
 	__TIM2_CLK_ENABLE();
@@ -83,6 +77,16 @@ void Hardware_init(void) {
 
 	// Start Timer 2 base unit in interrupt mode
 	HAL_TIM_Base_Start_IT(&TIM_Init);
+
+	GPIO_InitTypeDef GPIO_Init;
+
+	__GPIOB_CLK_ENABLE();
+	GPIO_Init.Pin = BRD_D15_PIN;
+	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_Init.Pull = GPIO_PULLUP;
+	GPIO_Init.Speed = GPIO_SPEED_FAST;
+	HAL_GPIO_Init(BRD_D15_GPIO_PORT, &GPIO_Init);
+
 }
 
 /**
@@ -92,7 +96,8 @@ void Hardware_init(void) {
  */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
-	BRD_LEDToggle(BRD_GREEN_LEDMASK|BRD_BLUE_LEDMASK|BRD_RED_LEDMASK);
+	HAL_GPIO_WritePin(BRD_D15_GPIO_PORT, BRD_D15_PIN, toggleValue);
+	toggleValue = 1 - toggleValue;
 
 }
 
