@@ -98,16 +98,14 @@ int pantilt_angle_read(int type);
 #define LEFT_EDGE -70
 #define SHORTEST_PERIOD 2
 #define LONGEST_PERIOD 20
-#define METRONOME_INCREMENT 5
-#define METRONOME_PERIOD_TO_REGISTER(period) ((int)(50000 * ((float)period / (80.0 / (float)METRONOME_INCREMENT))))
-#define SET_PERIOD_REGISTER(value) __HAL_TIM_SET_AUTORELOAD(&TIM_Init, value) //__HAL_TIM_SET_COMPARE(&TIM_Init, TIM_CHANNEL_1, value)
-#define SET_METRONOME_PERIOD(period) SET_PERIOD_REGISTER(METRONOME_PERIOD_TO_REGISTER(period))
+#define METRONOME_UPDATE_TIME 100
 /* Private variables ---------------------------------------------------------*/
 uint32_t prescalerValue = 0;
 TIM_OC_InitTypeDef sConfig;
 int inMetronomeMode = 0;
 int metronomePeriod = 10; //in seconds
-int metronomeDirection = METRONOME_INCREMENT;
+int metronomeDirection = METRONOME_UPDATE_TIME;
+int metronomeCount = 1;
 TIM_HandleTypeDef TIM_Init;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -222,8 +220,8 @@ void metronome_timer_init(void) {
 
 	/* TIM Base configuration */
 	TIM_Init.Instance = TIM2;				//Enable Timer 2
-  	TIM_Init.Init.Period = METRONOME_PERIOD_TO_REGISTER(metronomePeriod);
-  	TIM_Init.Init.Prescaler = (uint16_t) ((SystemCoreClock) / 50000) - 1;	//Set prescaler value
+  	TIM_Init.Init.Period = 50000 / (1000 / METRONOME_UPDATE_TIME); //1ms timer
+  	TIM_Init.Init.Prescaler = (uint16_t) (SystemCoreClock / 50000) - 1;	//Set prescaler value
   	TIM_Init.Init.ClockDivision = 0;			//Set clock division
 	TIM_Init.Init.RepetitionCounter = 0;	// Set reload Value
   	TIM_Init.Init.CounterMode = TIM_COUNTERMODE_UP;	//Set timer to count up.
@@ -232,7 +230,7 @@ void metronome_timer_init(void) {
 	HAL_TIM_Base_Init(&TIM_Init);
 
 	/* Set priority of Timer 2 update interrupt to lowest priority */
-	HAL_NVIC_SetPriority(TIM2_IRQn, 15, 0);
+	HAL_NVIC_SetPriority(TIM2_IRQn, 10, 0);
 
 	// Enable the Timer 2 interrupt
 	HAL_NVIC_EnableIRQ(TIM2_IRQn);
@@ -243,6 +241,17 @@ void metronome_timer_init(void) {
 
 void move_needle(int increment);
 
+int angle_to_lightbar_index(int angle) {
+	int ledPos = ((angle / 14) + 5);
+	if(ledPos > 9) {
+		ledPos = 9;
+	} else if (ledPos < 0) {
+		ledPos = 0;
+	}
+
+	return ledPos;
+}
+
 /**
  * @brief Period elapsed callback in non blocking mode
  * @param htim: Pointer to a TIM_HandleTypeDef that contains the configuration information for the TIM module.
@@ -250,15 +259,18 @@ void move_needle(int increment);
  */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if(inMetronomeMode) {
-		move_needle(metronomeDirection);
 
 		/* Switch metronome direction if at edge */
-		int currentPosition = s4435360_hal_pantilt_pan_read();
-		if(currentPosition >= 40) {
-			metronomeDirection = -1 * METRONOME_INCREMENT;
-		} else if(currentPosition <= -40) {
-			metronomeDirection = METRONOME_INCREMENT;
+		if((metronomeCount >= metronomePeriod * 1000) ||
+				(metronomeCount <= 0)) {
+			metronomeDirection *= -1;
 		}
+
+		metronomeCount += metronomeDirection;
+
+		int angle = (80.0 * ((float)metronomeCount / (float)metronomePeriod / 1000.0)) - 40;
+		s4435360_hal_pantilt_pan_write(angle);
+		s4435360_lightbar_write(1 << angle_to_lightbar_index(angle));
 	}
 }
 
@@ -321,22 +333,20 @@ void move_needle(int increment) {
 	}
 
 	s4435360_hal_pantilt_pan_write(newAngle);
-	s4435360_lightbar_write(1 << ((newAngle / 14) + 5));
+	s4435360_lightbar_write(1 << angle_to_lightbar_index(newAngle));
 }
 
 void changePeriod(int increment) {
-	/* Check period is between 2 and 20s */
-	if(metronomePeriod + increment > LONGEST_PERIOD) {
+	metronomePeriod += increment;
+
+	if(metronomePeriod > LONGEST_PERIOD) {
 		metronomePeriod = LONGEST_PERIOD;
-	} else if(metronomePeriod + increment < SHORTEST_PERIOD) {
+	} else if (metronomePeriod < SHORTEST_PERIOD) {
 		metronomePeriod = SHORTEST_PERIOD;
-	} else {
-		metronomePeriod = metronomePeriod + increment;
 	}
 
-	debug_printf("New metronome period %d\n\r", METRONOME_PERIOD_TO_REGISTER(metronomePeriod));
-	SET_METRONOME_PERIOD(metronomePeriod);
-
+	int currentAngle = s4435360_hal_pantilt_pan_read();
+	metronomeCount = ((currentAngle + 40) / 80.0) * metronomePeriod * 1000;
 }
 
 void process_command(char command) {
@@ -388,12 +398,14 @@ int main(void) {
 	s4435360_hal_pantilt_init();
 	metronome_timer_init();
 	s4435360_lightbar_init();
+	s4435360_lightbar_write(1 << angle_to_lightbar_index(0));
+
 	char commandChar;
 	setbuf(stdout, NULL);
 
 	while(1) {
 		commandChar = debug_getc();
 		process_command(commandChar);
-		HAL_Delay(125);
+		HAL_Delay(250);
 	}
 }
