@@ -16,12 +16,21 @@
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx.h"
 #include "board.h"
+#include "s4435360_hal_lightbar.h"
 
 /* Clock scaling and timing values */
 #define  COUNTER_CLOCK      500000
 #define  PRESCALAR 			(uint32_t)((SystemCoreClock) / COUNTER_CLOCK) - 1
 #define  PERIOD 			20 /* Period of PWM (ms) */
-#define  PERIOD_VALUE       ((SystemCoreClock / PRESCALAR) / (1000 / PERIOD))
+#define  PERIOD_VALUE       (COUNTER_CLOCK / (1000 / PERIOD))
+
+/* Macros for converting between angle and pulse period/register value */
+#define  ANGLE_TO_PULSE_PERIOD(angle) ((angle / 90.0) + 1.45)
+#define  PULSE_PERIOD_TO_ANGLE(pulsePeriod) ((90.0 * pulsePeriod) - 130.5)
+#define  PULSE_PERIOD_TO_REGISTER(period) ((period / (float)PERIOD) * (float)PERIOD_VALUE)
+#define  PULSE_REGISTER_TO_PERIOD(value) ((value / (float)PERIOD_VALUE) * (float)PERIOD)
+#define  ANGLE_TO_PERIOD_REGISTER(angle) PULSE_PERIOD_TO_REGISTER(ANGLE_TO_PULSE_PERIOD(angle))
+#define  PERIOD_REGISTER_TO_ANGLE(value) PULSE_PERIOD_TO_ANGLE(PULSE_REGISTER_TO_PERIOD(value))
 
 /* Definition for TIMx clock resources */
 #define TIMx       			    TIM1
@@ -66,18 +75,8 @@ TIM_HandleTypeDef TimInit;
 #define PAN 0
 #define TILT 1
 
-/* Macros for converting between angle (degrees), duty cycle (%) and pulse period (ms) */
-#define ANGLE_TO_DUTY_CYCLE(angle) ((angle *5 / 90) + 7.25)
-#define ANGLE_TO_PULSE_PERIOD(angle) ((angle / 90) + 1.45)
-#define DUTY_CYCLE_TO_ANGLE(dutyCycle) ((18 * dutyCycle) - 130.5)
-#define PULSE_PERIOD_TO_ANGLE(pulsePeriod) ((90 * pulsePeriod) - 130.5)
-
-/* Macros for converting between physical values and register values */
-#define DUTY_TO_PULSE(duty)  (PERIOD_VALUE * duty / 100)
-#define PULSE_TO_DUTY(pulse) (pulse * 100 / (PERIOD_VALUE))
-#define ANGLE_TO_PULSE(angle) DUTY_TO_PULSE(ANGLE_TO_DUTY_CYCLE(angle))
-#define PULSE_TO_ANGLE(pulse) DUTY_CYCLE_TO_ANGLE(PULSE_TO_DUTY(pulse))
-
+void pantilt_angle_write(int type, int angle);
+int pantilt_angle_read(int type);
 
 /* External function prototypes -----------------------------------------------*/
 #define s4435360_hal_pantilt_pan_write(angle) pantilt_angle_write(PAN, angle)
@@ -91,22 +90,29 @@ TIM_HandleTypeDef TimInit;
 #define METRONOME_CHAR 'm'
 #define FASTER_CHAR '+'
 #define SLOWER_CHAR '-'
-#define RIGHT_INCREMENT 30
-#define LEFT_INCREMENT -30
+#define RIGHT_INCREMENT 10
+#define LEFT_INCREMENT -10
 #define FASTER_INCREMENT -1
 #define SLOWER_INCREMENT 1
 #define RIGHT_EDGE 70
 #define LEFT_EDGE -70
 #define SHORTEST_PERIOD 2
 #define LONGEST_PERIOD 20
+#define METRONOME_INCREMENT 5
+#define METRONOME_PERIOD_TO_REGISTER(period) ((int)(50000 * ((float)period / (80.0 / (float)METRONOME_INCREMENT))))
+#define SET_PERIOD_REGISTER(value) __HAL_TIM_SET_AUTORELOAD(&TIM_Init, value) //__HAL_TIM_SET_COMPARE(&TIM_Init, TIM_CHANNEL_1, value)
+#define SET_METRONOME_PERIOD(period) SET_PERIOD_REGISTER(METRONOME_PERIOD_TO_REGISTER(period))
 /* Private variables ---------------------------------------------------------*/
 uint32_t prescalerValue = 0;
 TIM_OC_InitTypeDef sConfig;
 int inMetronomeMode = 0;
-int metronomePeriod = 10;
+int metronomePeriod = 10; //in seconds
+int metronomeDirection = METRONOME_INCREMENT;
+TIM_HandleTypeDef TIM_Init;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
-void PWM_init(double duty1, double duty2, double duty3, double duty4) {
+
+void PWM_init(int pulse1, int pulse2, int pulse3, int pulse4) {
 
 	GPIO_InitTypeDef GPIO_InitStruct;
 
@@ -165,25 +171,25 @@ void PWM_init(double duty1, double duty2, double duty3, double duty4) {
 	sConfig.OCIdleState  = TIM_OCIDLESTATE_RESET;
 
 	/* Set the pulse value for channel 1 */
-	sConfig.Pulse = DUTY_TO_PULSE(duty1);
+	sConfig.Pulse = pulse1;
 	if (HAL_TIM_PWM_ConfigChannel(&TimInit, &sConfig, TIM_CHANNEL_1) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 2 */
-	sConfig.Pulse = DUTY_TO_PULSE(duty2);
+	sConfig.Pulse = pulse2;
 	if (HAL_TIM_PWM_ConfigChannel(&TimInit, &sConfig, TIM_CHANNEL_2) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 3 */
-	sConfig.Pulse = DUTY_TO_PULSE(duty3);
+	sConfig.Pulse = pulse3;
 	if (HAL_TIM_PWM_ConfigChannel(&TimInit, &sConfig, TIM_CHANNEL_3) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 4 */
-	sConfig.Pulse = DUTY_TO_PULSE(duty4);
+	sConfig.Pulse = pulse4;
 	if (HAL_TIM_PWM_ConfigChannel(&TimInit, &sConfig, TIM_CHANNEL_4) != HAL_OK) {
 		/* Configuration Error */
 	}
@@ -203,12 +209,63 @@ void PWM_init(double duty1, double duty2, double duty3, double duty4) {
 	}
 }
 
-
 void s4435360_hal_pantilt_init(void) {
-	PWM_init(ANGLE_TO_DUTY_CYCLE(0),
-			ANGLE_TO_DUTY_CYCLE(0),
-			ANGLE_TO_DUTY_CYCLE(0),
-			ANGLE_TO_DUTY_CYCLE(0));
+	PWM_init(ANGLE_TO_PERIOD_REGISTER(0),
+			ANGLE_TO_PERIOD_REGISTER(0),
+			ANGLE_TO_PERIOD_REGISTER(0),
+			ANGLE_TO_PERIOD_REGISTER(0));
+}
+
+void metronome_timer_init(void) {
+
+	__TIM2_CLK_ENABLE();
+
+	/* TIM Base configuration */
+	TIM_Init.Instance = TIM2;				//Enable Timer 2
+  	TIM_Init.Init.Period = METRONOME_PERIOD_TO_REGISTER(metronomePeriod);
+  	TIM_Init.Init.Prescaler = (uint16_t) ((SystemCoreClock) / 50000) - 1;	//Set prescaler value
+  	TIM_Init.Init.ClockDivision = 0;			//Set clock division
+	TIM_Init.Init.RepetitionCounter = 0;	// Set reload Value
+  	TIM_Init.Init.CounterMode = TIM_COUNTERMODE_UP;	//Set timer to count up.
+
+	/* Initialise Timer */
+	HAL_TIM_Base_Init(&TIM_Init);
+
+	/* Set priority of Timer 2 update interrupt to lowest priority */
+	HAL_NVIC_SetPriority(TIM2_IRQn, 15, 0);
+
+	// Enable the Timer 2 interrupt
+	HAL_NVIC_EnableIRQ(TIM2_IRQn);
+
+	// Start Timer 2 base unit in interrupt mode
+	HAL_TIM_Base_Start_IT(&TIM_Init);
+}
+
+void move_needle(int increment);
+
+/**
+ * @brief Period elapsed callback in non blocking mode
+ * @param htim: Pointer to a TIM_HandleTypeDef that contains the configuration information for the TIM module.
+ * @retval None
+ */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	if(inMetronomeMode) {
+		move_needle(metronomeDirection);
+
+		/* Switch metronome direction if at edge */
+		int currentPosition = s4435360_hal_pantilt_pan_read();
+		if(currentPosition >= 40) {
+			metronomeDirection = -1 * METRONOME_INCREMENT;
+		} else if(currentPosition <= -40) {
+			metronomeDirection = METRONOME_INCREMENT;
+		}
+	}
+}
+
+//Override default mapping of this handler to Default_Handler
+void TIM2_IRQHandler(void) {
+	HAL_TIM_IRQHandler(&TIM_Init);
+
 }
 
 void pantilt_angle_write(int type, int angle) {
@@ -222,13 +279,13 @@ void pantilt_angle_write(int type, int angle) {
 
 	switch(type) {
 		case PAN:
-			debug_printf("Pulse = %d\n\r", ANGLE_TO_PULSE(angle));
-			PWM_CHANNEL_PAN_SET(ANGLE_TO_PULSE(angle));
+
+			PWM_CHANNEL_PAN_SET(ANGLE_TO_PERIOD_REGISTER(angle));
 			break;
 
 		case TILT:
 
-			PWM_CHANNEL_TILT_SET(ANGLE_TO_PULSE(angle));
+			PWM_CHANNEL_TILT_SET(ANGLE_TO_PERIOD_REGISTER(angle));
 			break;
 
 		default:
@@ -241,9 +298,9 @@ int pantilt_angle_read(int type) {
 
 	switch(type) {
 		case PAN:
-			return PULSE_TO_ANGLE(PWM_CHANNEL_PAN_GET());
+			return PERIOD_REGISTER_TO_ANGLE(PWM_CHANNEL_PAN_GET());
 		case TILT:
-			return PULSE_TO_ANGLE(PWM_CHANNEL_TILT_GET());
+			return PERIOD_REGISTER_TO_ANGLE(PWM_CHANNEL_TILT_GET());
 		default:
 			return 0;
 	}
@@ -252,7 +309,6 @@ int pantilt_angle_read(int type) {
 void move_needle(int increment) {
 
 	int currentAngle = s4435360_hal_pantilt_pan_read();
-	debug_printf("Current angle = %d\r\n", currentAngle);
 	int newAngle;
 
 	/* Check angle is between +-70 */
@@ -264,8 +320,8 @@ void move_needle(int increment) {
 		newAngle = currentAngle + increment;
 	}
 
-	debug_printf("new angle = %d\r\n", newAngle);
 	s4435360_hal_pantilt_pan_write(newAngle);
+	s4435360_lightbar_write(1 << ((newAngle / 14) + 5));
 }
 
 void changePeriod(int increment) {
@@ -277,10 +333,13 @@ void changePeriod(int increment) {
 	} else {
 		metronomePeriod = metronomePeriod + increment;
 	}
+
+	debug_printf("New metronome period %d\n\r", METRONOME_PERIOD_TO_REGISTER(metronomePeriod));
+	SET_METRONOME_PERIOD(metronomePeriod);
+
 }
 
 void process_command(char command) {
-
 	switch(command) {
 
 		case RIGHT_CHAR:
@@ -327,7 +386,8 @@ int main(void) {
 	//Init hardware
 	BRD_init();
 	s4435360_hal_pantilt_init();
-
+	metronome_timer_init();
+	s4435360_lightbar_init();
 	char commandChar;
 	setbuf(stdout, NULL);
 
