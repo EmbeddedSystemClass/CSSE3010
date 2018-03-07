@@ -24,18 +24,19 @@
 #include "stm32f4xx.h"
 #include "board.h"
 
-#define  COUNTER_CLOCK      50000
+/* Clock scaling and timing values */
+#define  COUNTER_CLOCK      500000
 #define  PRESCALAR 			(uint32_t)((SystemCoreClock) / COUNTER_CLOCK) - 1
 #define  PERIOD 			20 /* Period of PWM (ms) */
-#define  PERIOD_VALUE       COUNTER_CLOCK / (1000 / PERIOD)
-#define  DUTY1_VALUE 		75     /* Duty cycle 1 (%) */
-#define  DUTY2_VALUE 		50   /* Duty cycle 2 (%) */
-#define  DUTY3_VALUE 		25     /* Duty cycle 3 (%) */
-#define  DUTY4_VALUE 		10   /* Duty cycle 4 (%) */
-#define  PULSE1_VALUE       (uint32_t)(PERIOD_VALUE * DUTY1_VALUE / 100)    /* Capture Compare 1 Value  */
-#define  PULSE2_VALUE       (uint32_t)(PERIOD_VALUE * DUTY2_VALUE / 100) 	/* Capture Compare 2 Value  */
-#define  PULSE3_VALUE       (uint32_t)(PERIOD_VALUE * DUTY3_VALUE / 100)    /* Capture Compare 3 Value  */
-#define  PULSE4_VALUE       (uint32_t)(PERIOD_VALUE * DUTY4_VALUE / 100) 	/* Capture Compare 4 Value  */
+#define  PERIOD_VALUE       (COUNTER_CLOCK / (1000 / PERIOD))
+
+/* Macros for converting between angle and pulse period/register value */
+#define  ANGLE_TO_PULSE_PERIOD(angle) ((0.0106 * (float)angle) + 1.4956) //((angle / 90.0) + 1.45)
+#define  PULSE_PERIOD_TO_ANGLE(pulsePeriod) ((94.515 * (float)pulsePeriod) - 141.35) //((90.0 * pulsePeriod) - 130.5)
+#define  PULSE_PERIOD_TO_REGISTER(period) ((period / (float)PERIOD) * (float)PERIOD_VALUE)
+#define  PULSE_REGISTER_TO_PERIOD(value) ((value / (float)PERIOD_VALUE) * (float)PERIOD)
+#define  ANGLE_TO_PERIOD_REGISTER(angle) PULSE_PERIOD_TO_REGISTER(ANGLE_TO_PULSE_PERIOD(angle))
+#define  PERIOD_REGISTER_TO_ANGLE(value) PULSE_PERIOD_TO_ANGLE(PULSE_REGISTER_TO_PERIOD(value))
 
 /* Definition for TIMx clock resources */
 #define TIMx       			    TIM1
@@ -56,48 +57,54 @@
 #define TIMx_GPIO_AF_CHANNEL3          GPIO_AF1_TIM1
 #define TIMx_GPIO_AF_CHANNEL4          GPIO_AF1_TIM1
 
-/*Define PAN and TILT types */
-#define PAN 0
-#define TILT 1
+TIM_HandleTypeDef TimInit;
 
-/* Private macro -------------------------------------------------------------*/
-#define ANGLE_TO_DUTY_CYCLE(angle) (angle *5 / 90) + 7.25
-#define ANGLE_TO_PULSE_PERIOD(angle) (angle / 90) + 1.45
-#define DUTY_CYCLE_TO_ANGLE(dutyCycle) (18 * dutyCycle) - 130.5
-#define PULSE_PERIOD_TO_ANGLE(pulsePeriod) (90 * pulsePeriod) - 130.5
+/* Macros for getting and setting PWM register compare values */
+#define PWM_TIMER_HANDLER	TimInit
+#define PWM_CHANNEL1_GET() 		__HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_1)
+#define PWM_CHANNEL1_SET(value) 	__HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_1, value)
+#define PWM_CHANNEL2_GET() 		__HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_2)
+#define PWM_CHANNEL2_SET(value) 	__HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_2, value)
+#define PWM_CHANNEL3_GET() 		__HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_3)
+#define PWM_CHANNEL3_SET(value) 	__HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_3, value)
+#define PWM_CHANNEL4_GET() 		__HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_4)
+#define PWM_CHANNEL4_SET(value) 	__HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_4, value)
 
-/* External function prototypes -----------------------------------------------*/
+
+/*Wrappers for defining tilt/pan set and get */
+#define PWM_CHANNEL_PAN_SET(value)  PWM_CHANNEL1_SET(value)
+#define PWM_CHANNEL_PAN_GET() 		PWM_CHANNEL1_GET()
+#define PWM_CHANNEL_TILT_SET(value) PWM_CHANNEL2_SET(value)
+#define PWM_CHANNEL_TILT_GET() 		PWM_CHANNEL2_GET()
+
+/* Macros for pan/tilt specific reading and writing */
 #define s4435360_hal_pantilt_pan_write(angle) pantilt_angle_write(PAN, angle)
 #define s4435360_hal_pantilt_pan_read() pantilt_angle_read(PAN)
 #define s4435360_hal_pantilt_tile_write(angle) pantilt_angle_write(TILT, angle)
 #define s4435360_hal_pantilt_tilt_read() pantilt_angle_read(TILT)
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-uint32_t prescalerValue = 0;
-TIM_OC_InitTypeDef sConfig;
-TIM_HandleTypeDef TimInit;
-/* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
-void PWM_init(void) {
+
+uint32_t prescalerValue = 0; //Prescalar value for PWM timer
+TIM_OC_InitTypeDef sConfig; //PWM config
+
+/**
+ * @brief  Initialises 4 PWM channels
+ * @param  Initial pulse values for the PWM channels
+ * @retval None
+ */
+void PWM_init(int pulse1, int pulse2, int pulse3, int pulse4) {
 
 	GPIO_InitTypeDef GPIO_InitStruct;
-
-	BRD_LEDInit();	//Initialise LEDs
-
-	/* Turn off LEDs */
-	BRD_LEDRedOff();
-	BRD_LEDGreenOn();
-	BRD_LEDBlueOff();
 
 	TIMx_CLK_ENABLE();
 
 	TIMx_CHANNEL_GPIO_PORT();
 
+	/* Channel generic fields */
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 	GPIO_InitStruct.Pull = GPIO_PULLUP;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 
+	/* Channel specific fields */
 	GPIO_InitStruct.Alternate = TIMx_GPIO_AF_CHANNEL1;
 	GPIO_InitStruct.Pin = TIMx_GPIO_PIN_CHANNEL1;
 	HAL_GPIO_Init(TIMx_GPIO_PORT_CHANNEL1, &GPIO_InitStruct);
@@ -114,6 +121,7 @@ void PWM_init(void) {
 	GPIO_InitStruct.Pin = TIMx_GPIO_PIN_CHANNEL4;
 	HAL_GPIO_Init(TIMx_GPIO_PORT_CHANNEL4, &GPIO_InitStruct);
 
+	/* Set PWM timer fields */
 	prescalerValue = PRESCALAR;
 	TimInit.Instance = TIMx;
 
@@ -127,7 +135,6 @@ void PWM_init(void) {
 	}
 
 
-	/*##-2- Configure the PWM channels #########################################*/
 	/* Common configuration for all channels */
 	sConfig.OCMode       = TIM_OCMODE_PWM1;
 	sConfig.OCPolarity   = TIM_OCPOLARITY_HIGH;
@@ -138,25 +145,25 @@ void PWM_init(void) {
 	sConfig.OCIdleState  = TIM_OCIDLESTATE_RESET;
 
 	/* Set the pulse value for channel 1 */
-	sConfig.Pulse = PULSE1_VALUE;
+	sConfig.Pulse = pulse1;
 	if (HAL_TIM_PWM_ConfigChannel(&TimInit, &sConfig, TIM_CHANNEL_1) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 2 */
-	sConfig.Pulse = PULSE2_VALUE;
+	sConfig.Pulse = pulse2;
 	if (HAL_TIM_PWM_ConfigChannel(&TimInit, &sConfig, TIM_CHANNEL_2) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 3 */
-	sConfig.Pulse = PULSE3_VALUE;
+	sConfig.Pulse = pulse3;
 	if (HAL_TIM_PWM_ConfigChannel(&TimInit, &sConfig, TIM_CHANNEL_3) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 4 */
-	sConfig.Pulse = PULSE4_VALUE;
+	sConfig.Pulse = pulse4;
 	if (HAL_TIM_PWM_ConfigChannel(&TimInit, &sConfig, TIM_CHANNEL_4) != HAL_OK) {
 		/* Configuration Error */
 	}
@@ -176,22 +183,65 @@ void PWM_init(void) {
 	}
 }
 
-
-
 /**
- * @brief	Writes the specified segment_value
- * 			to the specified segment
- * @param	segment, segment_value
- * @retval 	None
+ * @brief  Initialises pan and tilt servo PWM hardware
+ * @param  None
+ * @retval None
  */
 void s4435360_hal_pantilt_init(void) {
-
+	/* Initialises PWM to angle of 0 */
+	PWM_init(ANGLE_TO_PERIOD_REGISTER(0),
+			ANGLE_TO_PERIOD_REGISTER(0),
+			ANGLE_TO_PERIOD_REGISTER(0),
+			ANGLE_TO_PERIOD_REGISTER(0));
 }
 
+/**
+ * @brief  Writes an angle to either the pan or tilt servo
+ * @param  type (PAN, TILT), angle
+ * @retval None
+ */
 void pantilt_angle_write(int type, int angle) {
 
+	//Ensure angle is between -85 and 85
+	if(angle > 85) {
+		angle = 85;
+	} else if(angle < -85) {
+		angle = -85;
+	}
+
+	/* Switch PAN and TILT cases */
+	switch(type) {
+		case PAN:
+
+			PWM_CHANNEL_PAN_SET(ANGLE_TO_PERIOD_REGISTER(angle));
+			break;
+
+		case TILT:
+
+			PWM_CHANNEL_TILT_SET(ANGLE_TO_PERIOD_REGISTER(angle));
+			break;
+
+		default:
+			break;
+
+	}
 }
 
-void pantilt_angle_read(int type) {
+/**
+ * @brief  Reads the current angle of either the pan or tilt servo
+ * @param  type (PAN, TILT)
+ * @retval angle
+ */
+int pantilt_angle_read(int type) {
 
+	/* Switch on PAN, TILT cases */
+	switch(type) {
+		case PAN:
+			return PERIOD_REGISTER_TO_ANGLE(PWM_CHANNEL_PAN_GET());
+		case TILT:
+			return PERIOD_REGISTER_TO_ANGLE(PWM_CHANNEL_TILT_GET());
+		default:
+			return 0;
+	}
 }

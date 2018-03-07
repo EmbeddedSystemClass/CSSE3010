@@ -1,3 +1,5 @@
+
+
 /**
  ******************************************************************************
  * @file    mylib/s4435360_hal_pantilt.h
@@ -15,7 +17,17 @@
 #ifndef S4435360_PANTILT_H
 #define S4435360_PANTILT_H
 
-void PWM_init(void);
+#define PAN 0
+#define TILT 1
+
+void pantilt_angle_write(int type, int angle);
+
+int pantilt_angle_read(int type);
+
+void s4435360_hal_pantilt_init(void);
+
+#define s4435360_hal_pantilt_pan_write(angle) pantilt_angle_write(PAN, angle)
+#define s4435360_hal_pantilt_pan_read() pantilt_angle_read(PAN)
 
 #endif
 
