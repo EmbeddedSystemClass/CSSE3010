@@ -3,3 +3,8 @@
 *.o
 *.d
 .DS_Store
+*.project
+*.cproject
+*.xml
+*.cfg
+/LinkerScript.ld
