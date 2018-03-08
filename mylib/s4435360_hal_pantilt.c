@@ -15,13 +15,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include <s4435360_hal_pantilt.h>
 
-#include "stm32f4xx_hal_rcc.h"
-#include "stm32f4xx_hal_tim.h"
+//#include "stm32f4xx_hal_rcc.h"
+//#include "stm32f4xx_hal_tim.h"
 #include "stm32f4xx_hal_conf.h"
 #include "debug_printf.h"
-#include "stm32f4xx_hal_gpio.h"
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx.h"
+//#include "stm32f4xx_hal_gpio.h"
+//#include "stm32f4xx_hal.h"
+//#include "stm32f4xx.h"
 #include "board.h"
 
 /* Clock scaling and timing values */
@@ -31,8 +31,10 @@
 #define  PERIOD_VALUE       (COUNTER_CLOCK / (1000 / PERIOD))
 
 /* Macros for converting between angle and pulse period/register value */
-#define  ANGLE_TO_PULSE_PERIOD(angle) ((0.0106 * (float)angle) + 1.4956) //((angle / 90.0) + 1.45)
-#define  PULSE_PERIOD_TO_ANGLE(pulsePeriod) ((94.515 * (float)pulsePeriod) - 141.35) //((90.0 * pulsePeriod) - 130.5)
+#define  ANGLE_TO_PULSE_PERIOD(angle) ((0.0106 * (float)angle) + 1.4956)
+//#define  ANGLE_TO_PULSE_PERIOD(angle) (((float)angle / 90.0) + 1.45)
+#define  PULSE_PERIOD_TO_ANGLE(pulsePeriod) ((94.515 * (float)pulsePeriod) - 141.35)
+//#define  PULSE_PERIOD_TO_ANGLE(pulsePeriod) ((90.0 * (float)pulsePeriod) - 130.5)
 #define  PULSE_PERIOD_TO_REGISTER(period) ((period / (float)PERIOD) * (float)PERIOD_VALUE)
 #define  PULSE_REGISTER_TO_PERIOD(value) ((value / (float)PERIOD_VALUE) * (float)PERIOD)
 #define  ANGLE_TO_PERIOD_REGISTER(angle) PULSE_PERIOD_TO_REGISTER(ANGLE_TO_PULSE_PERIOD(angle))
@@ -57,7 +59,7 @@
 #define TIMx_GPIO_AF_CHANNEL3          GPIO_AF1_TIM1
 #define TIMx_GPIO_AF_CHANNEL4          GPIO_AF1_TIM1
 
-TIM_HandleTypeDef TimInit;
+TIM_HandleTypeDef TIM_Init;
 
 /* Macros for getting and setting PWM register compare values */
 #define PWM_TIMER_HANDLER	TimInit
@@ -123,14 +125,14 @@ void PWM_init(int pulse1, int pulse2, int pulse3, int pulse4) {
 
 	/* Set PWM timer fields */
 	prescalerValue = PRESCALAR;
-	TimInit.Instance = TIMx;
+	TIM_Init.Instance = TIMx;
 
-	TimInit.Init.Prescaler         = prescalerValue;
-	TimInit.Init.Period            = PERIOD_VALUE;
-	TimInit.Init.ClockDivision     = 0;
-	TimInit.Init.CounterMode       = TIM_COUNTERMODE_UP;
-	TimInit.Init.RepetitionCounter = 0;
-	if (HAL_TIM_PWM_Init(&TimInit) != HAL_OK) {
+	TIM_Init.Init.Prescaler         = prescalerValue;
+	TIM_Init.Init.Period            = PERIOD_VALUE;
+	TIM_Init.Init.ClockDivision     = 0;
+	TIM_Init.Init.CounterMode       = TIM_COUNTERMODE_UP;
+	TIM_Init.Init.RepetitionCounter = 0;
+	if (HAL_TIM_PWM_Init(&TIM_Init) != HAL_OK) {
 		/* Initialization Error */
 	}
 
@@ -146,39 +148,39 @@ void PWM_init(int pulse1, int pulse2, int pulse3, int pulse4) {
 
 	/* Set the pulse value for channel 1 */
 	sConfig.Pulse = pulse1;
-	if (HAL_TIM_PWM_ConfigChannel(&TimInit, &sConfig, TIM_CHANNEL_1) != HAL_OK) {
+	if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_1) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 2 */
 	sConfig.Pulse = pulse2;
-	if (HAL_TIM_PWM_ConfigChannel(&TimInit, &sConfig, TIM_CHANNEL_2) != HAL_OK) {
+	if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_2) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 3 */
 	sConfig.Pulse = pulse3;
-	if (HAL_TIM_PWM_ConfigChannel(&TimInit, &sConfig, TIM_CHANNEL_3) != HAL_OK) {
+	if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_3) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 4 */
 	sConfig.Pulse = pulse4;
-	if (HAL_TIM_PWM_ConfigChannel(&TimInit, &sConfig, TIM_CHANNEL_4) != HAL_OK) {
+	if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_4) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Start PWM signals generation */
-	if (HAL_TIM_PWM_Start(&TimInit, TIM_CHANNEL_1) != HAL_OK) {
+	if (HAL_TIM_PWM_Start(&TIM_Init, TIM_CHANNEL_1) != HAL_OK) {
 		/* PWM Generation Error */
 	}
-	if (HAL_TIM_PWM_Start(&TimInit, TIM_CHANNEL_2) != HAL_OK) {
+	if (HAL_TIM_PWM_Start(&TIM_Init, TIM_CHANNEL_2) != HAL_OK) {
 		/* PWM Generation Error */
 	}
-	if (HAL_TIM_PWM_Start(&TimInit, TIM_CHANNEL_3) != HAL_OK) {
+	if (HAL_TIM_PWM_Start(&TIM_Init, TIM_CHANNEL_3) != HAL_OK) {
 		/* PWM generation Error */
 	}
-	if (HAL_TIM_PWM_Start(&TimInit, TIM_CHANNEL_4) != HAL_OK) {
+	if (HAL_TIM_PWM_Start(&TIM_Init, TIM_CHANNEL_4) != HAL_OK) {
 		/* PWM generation Error */
 	}
 }
