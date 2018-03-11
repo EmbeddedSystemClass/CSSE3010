@@ -12,143 +12,94 @@
 #include "stm32f4xx_hal_conf.h"
 #include "board.h"
 #include "s4435360_hal_lightbar.h"
-#include "s4435360_hal_pantilt.h"
 #include "s4435360_hal_joystick.h"
-#include "stdint.h"
+#include "s4435360_hal_ir.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
-#define SQUARE_TIMER_FREQUENCY  50000
-#define SQUARE_CHANNEL			TIM_CHANNEL_3
-#define SQUARE_PORT 			BRD_D3_GPIO_PORT
-#define SQUARE_PIN				BRD_D3_PIN
-#define SQUARE_PORT_CLK()		__BRD_D3_GPIO_CLK()
-#define SQUARE_TIMER			TIM1
-#define SQUARE_GPIO_AF			GPIO_AF1_TIM1
-#define SQUARE_TIM_CLK()		__TIM1_CLK_ENABLE()
-#define SQUARE_TIMER_HANDLER	squareTimInit
-
-#define CARRIER_TIMER_FREQUENCY 37900
-#define CARRIER_CHANNEL 		TIM_CHANNEL_1
-#define CARRIER_PORT			BRD_D29_GPIO_PORT
-#define CARRIER_PIN				BRD_D29_PIN
-#define CARRIER_PORT_CLK()		__BRD_D29_GPIO_CLK()
-#define CARRIER_TIMER			TIM4
-#define CARRIER_GPIO_AF			GPIO_AF2_TIM4
-#define CARRIER_TIM_CLK()		__TIM4_CLK_ENABLE()
-#define CARRIER_TIMER_HANDLER	carrierTimInit
+#define DATA_TIMER_FREQUENCY 500000
 
 #define JOYSTICK_TO_FREQUENCY(adcValue) 		((adcValue / 4095.0) * 50)
-#define JOYSTICK_TO_LIGHTBAR_INDEX(adcValue) 	((adcValue / 4095.0) * 10)
-#define FREQUENCY_TO_PERIOD_REGISTER(frequency) (SQUARE_TIMER_FREQUENCY / (frequency / 2.0))
-#define FREQUENCY_TO_PULSE_REGISTER(frequency) 	(((FREQUENCY_TO_PERIOD_REGISTER(frequency) + 1) / 2) - 1)
-#define CHANGE_PERIOD_REGISTER(value) 			__HAL_TIM_SET_AUTORELOAD(&SQUARE_TIMER_HANDLER, value)
-#define CHANGE_PULSE_REGISTER(value)           	__HAL_TIM_SET_COMPARE(&SQUARE_TIMER_HANDLER, SQUARE_CHANNEL, value)
-
-#define CHANGE_TIMER_FREQUENCY(frequency) CHANGE_PERIOD_REGISTER(FREQUENCY_TO_PERIOD_REGISTER(frequency)); \
-											CHANGE_PULSE_REGISTER(FREQUENCY_TO_PULSE_REGISTER(frequency))
+#define JOYSTICK_TO_LIGHTBAR_INDEX(adcValue) 	((adcValue * 10 / 4095) > 10 ? 9 : (adcValue * 10 / 4095))
+#define FREQUENCY_TO_PERIOD_REGISTER(frequency) (DATA_TIMER_FREQUENCY / frequency)
+#define CHANGE_PERIOD_REGISTER(value) 			__HAL_TIM_SET_AUTORELOAD(&dataTimInit, value)
+#define CHANGE_COUNTER_REGISTER(value) 		__HAL_TIM_SET_COUNTER(&dataTimInit, value)
 
 /* Private variables ---------------------------------------------------------*/
-TIM_HandleTypeDef squareTimInit, carrierTimInit;
-TIM_OC_InitTypeDef squareConfig, carrierConfig;
+TIM_HandleTypeDef squareTimInit, dataTimInit;
+TIM_OC_InitTypeDef squareConfig;
+volatile int squareRising = 1;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
 void change_timer_frequency(float frequency) {
-	int periodRegister, pulseRegister;
-
-	if(frequency < ((2 * SQUARE_TIMER_FREQUENCY) / 65535)) {
+	int periodRegister;
+	if(frequency < DATA_TIMER_FREQUENCY / 65535.0) {
 		periodRegister = 65535;
-		pulseRegister = 32767;
 	} else {
 		periodRegister = FREQUENCY_TO_PERIOD_REGISTER(frequency);
-		pulseRegister = ((periodRegister + 1) / 2) - 1;
 	}
 
+	CHANGE_COUNTER_REGISTER((__HAL_TIM_GET_COUNTER(&dataTimInit) / (float)__HAL_TIM_GET_AUTORELOAD(&dataTimInit)) * periodRegister);
 	CHANGE_PERIOD_REGISTER(periodRegister);
-	CHANGE_PULSE_REGISTER(pulseRegister);
 
-}
-
-void carrier_wave_init(void) {
-
-	GPIO_InitTypeDef GPIO_InitStruct;
-	TIM_OC_InitTypeDef PWMConf;
-
-	CARRIER_TIM_CLK();
-	CARRIER_PORT_CLK();
-
-	GPIO_InitStruct.Pin = CARRIER_PIN;
-	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
-	GPIO_InitStruct.Alternate = CARRIER_GPIO_AF;
-	HAL_GPIO_Init(CARRIER_PORT, &GPIO_InitStruct);
-
-	carrierTimInit.Instance = CARRIER_TIMER;
-	carrierTimInit.Init.Period = 1;
-	carrierTimInit.Init.Prescaler = ((SystemCoreClock / 2) / (CARRIER_TIMER_FREQUENCY)) - 1;
-	carrierTimInit.Init.ClockDivision = 0;
-	carrierTimInit.Init.RepetitionCounter = 0;
-	carrierTimInit.Init.CounterMode = TIM_COUNTERMODE_UP;
-
-	PWMConf.OCMode = TIM_OCMODE_PWM1;
-	PWMConf.Pulse = 1;
-	PWMConf.OCPolarity = TIM_OCPOLARITY_HIGH;
-	PWMConf.OCNPolarity = TIM_OCNPOLARITY_HIGH;
-	PWMConf.OCFastMode = TIM_OCFAST_DISABLE;
-	PWMConf.OCIdleState = TIM_OCIDLESTATE_RESET;
-	PWMConf.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-
-	HAL_TIM_PWM_Init(&carrierTimInit);
-	HAL_TIM_PWM_ConfigChannel(&carrierTimInit, &PWMConf, CARRIER_CHANNEL);
-
-	HAL_TIM_PWM_Start(&carrierTimInit, CARRIER_CHANNEL);
 }
 
 void square_wave_init(float frequency) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-	TIM_OC_InitTypeDef PWMConfig;
 
-	SQUARE_TIM_CLK();
-	SQUARE_PORT_CLK();
+	// Timer 2 clock enable
+	__TIM3_CLK_ENABLE();
 
+	/* TIM Base configuration */
+	dataTimInit.Instance = TIM3;				//Enable Timer 2
+	dataTimInit.Init.Period = DATA_TIMER_FREQUENCY/frequency;
+	dataTimInit.Init.Prescaler = (uint16_t) ((SystemCoreClock / 2) / DATA_TIMER_FREQUENCY) - 1;	//Set prescaler value
+	dataTimInit.Init.ClockDivision = 0;			//Set clock division
+	dataTimInit.Init.RepetitionCounter = 0;	// Set reload Value
+	dataTimInit.Init.CounterMode = TIM_COUNTERMODE_UP;	//Set timer to count up.
 
-	GPIO_InitStructure.Pin = SQUARE_PIN;
-	GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;
-	GPIO_InitStructure.Pull = GPIO_NOPULL;
-	GPIO_InitStructure.Speed = GPIO_SPEED_FAST;
-	GPIO_InitStructure.Alternate = SQUARE_GPIO_AF;
-	HAL_GPIO_Init(SQUARE_PORT, &GPIO_InitStructure);
+	/* Initialise Timer */
+	HAL_TIM_Base_Init(&dataTimInit);
 
-	squareTimInit.Instance = SQUARE_TIMER;
-	squareTimInit.Init.Period = FREQUENCY_TO_PERIOD_REGISTER(frequency);
-	squareTimInit.Init.Prescaler = ((SystemCoreClock /2) / SQUARE_TIMER_FREQUENCY) - 1;;
-	squareTimInit.Init.ClockDivision = 0;
-	squareTimInit.Init.RepetitionCounter = 0;
-	squareTimInit.Init.CounterMode = TIM_COUNTERMODE_UP;
+	HAL_NVIC_SetPriority(TIM3_IRQn, 10, 0);		//Set Main priority to 10 and sub-priority to 0.
 
-	PWMConfig.OCMode = TIM_OCMODE_PWM1;
-	PWMConfig.Pulse = FREQUENCY_TO_PULSE_REGISTER(frequency);
-	PWMConfig.OCPolarity = TIM_OCPOLARITY_HIGH;
-	PWMConfig.OCNPolarity = TIM_OCNPOLARITY_HIGH;
-	PWMConfig.OCFastMode = TIM_OCFAST_DISABLE;
-	PWMConfig.OCIdleState = TIM_OCIDLESTATE_RESET;
-	PWMConfig.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+	// Enable the Timer 2 interrupt
+	HAL_NVIC_EnableIRQ(TIM3_IRQn);
 
-	HAL_TIM_PWM_Init(&squareTimInit);
-	HAL_TIM_PWM_ConfigChannel(&squareTimInit, &PWMConfig, SQUARE_CHANNEL);
-
-	HAL_TIM_PWM_Start(&squareTimInit, SQUARE_CHANNEL);
+	// Start Timer 2 base unit in interrupt mode
+	HAL_TIM_Base_Start_IT(&dataTimInit);
 }
 
+
+/**
+ * @brief Period elapsed callback in non blocking mode
+ * @param htim: Pointer to a TIM_HandleTypeDef that contains the configuration information for the TIM module.
+ * @retval None
+ */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+		if(squareRising) {
+			s4435360_hal_ir_datamodulation_set();
+		} else {
+			s4435360_hal_ir_datamodulation_clr();
+		}
+
+		squareRising = 1 - squareRising;
+
+}
+
+//Override default mapping of this handler to Default_Handler
+void TIM3_IRQHandler(void) {
+	HAL_TIM_IRQHandler(&dataTimInit);
+}
+
+
 int main(void) {
+
 	BRD_init();
 	s4435360_hal_joystick_init();
 	s4435360_lightbar_init();
+	s4435360_hal_ir_init();
 	square_wave_init(25.0);
-	carrier_wave_init();
-
 
 	unsigned int adcX;
 
@@ -158,7 +109,8 @@ int main(void) {
 		adcX = s4435360_hal_joystick_x_read();
 		change_timer_frequency(JOYSTICK_TO_FREQUENCY(adcX));
 		s4435360_lightbar_write(1 << (int)JOYSTICK_TO_LIGHTBAR_INDEX(adcX));
-
 		HAL_Delay(100);
 	}
 }
+
+
