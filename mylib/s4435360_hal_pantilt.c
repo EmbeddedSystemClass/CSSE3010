@@ -62,15 +62,15 @@
 TIM_HandleTypeDef TIM_Init;
 
 /* Macros for getting and setting PWM register compare values */
-#define PWM_TIMER_HANDLER	TimInit
+#define PWM_TIMER_HANDLER    TIM_Init
 #define PWM_CHANNEL1_GET() 		__HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_1)
 #define PWM_CHANNEL1_SET(value) 	__HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_1, value)
 #define PWM_CHANNEL2_GET() 		__HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_2)
 #define PWM_CHANNEL2_SET(value) 	__HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_2, value)
-#define PWM_CHANNEL3_GET() 		__HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_3)
-#define PWM_CHANNEL3_SET(value) 	__HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_3, value)
-#define PWM_CHANNEL4_GET() 		__HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_4)
-#define PWM_CHANNEL4_SET(value) 	__HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_4, value)
+#define PWM_CHANNEL3_GET()         __HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_3)
+#define PWM_CHANNEL3_SET(value)     __HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_3, value)
+#define PWM_CHANNEL4_GET()         __HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_4)
+#define PWM_CHANNEL4_SET(value)     __HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_4, value)
 
 
 /*Wrappers for defining tilt/pan set and get */
@@ -87,6 +87,8 @@ TIM_HandleTypeDef TIM_Init;
 
 uint32_t prescalerValue = 0; //Prescalar value for PWM timer
 TIM_OC_InitTypeDef sConfig; //PWM config
+
+
 
 /**
  * @brief  Initialises 4 PWM channels
@@ -138,35 +140,36 @@ void PWM_init(int pulse1, int pulse2, int pulse3, int pulse4) {
 
 
 	/* Common configuration for all channels */
-	sConfig.OCMode       = TIM_OCMODE_PWM1;
-	sConfig.OCPolarity   = TIM_OCPOLARITY_HIGH;
-	sConfig.OCFastMode   = TIM_OCFAST_DISABLE;
-	sConfig.OCNPolarity  = TIM_OCNPOLARITY_HIGH;
-	sConfig.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+    sConfig.OCMode       = TIM_OCMODE_PWM1;
+    sConfig.OCPolarity   = TIM_OCPOLARITY_HIGH;
+    sConfig.OCFastMode   = TIM_OCFAST_DISABLE;
+    sConfig.OCNPolarity  = TIM_OCNPOLARITY_HIGH;
+    sConfig.OCNIdleState = TIM_OCNIDLESTATE_RESET;
 
-	sConfig.OCIdleState  = TIM_OCIDLESTATE_RESET;
+    sConfig.OCIdleState  = TIM_OCIDLESTATE_RESET;
 
 	/* Set the pulse value for channel 1 */
-	sConfig.Pulse = pulse1;
-	if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_1) != HAL_OK) {
+    sConfig.Pulse = pulse1;
+    if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_1) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 2 */
-	sConfig.Pulse = pulse2;
-	if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_2) != HAL_OK) {
+    sConfig.Pulse = pulse2;
+    if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_2) != HAL_OK) {
+
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 3 */
-	sConfig.Pulse = pulse3;
-	if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_3) != HAL_OK) {
+    sConfig.Pulse = pulse3;
+    if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_3) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 4 */
-	sConfig.Pulse = pulse4;
-	if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_4) != HAL_OK) {
+    sConfig.Pulse = pulse3;
+    if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_3) != HAL_OK) {
 		/* Configuration Error */
 	}
 

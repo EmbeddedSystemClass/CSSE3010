@@ -19,7 +19,6 @@
 
 /* External function prototypes -----------------------------------------------*/
 #include "stm32f4xx_hal_conf.h"
-#include "debug_printf.h"
 #include "board.h"
 
 ADC_HandleTypeDef AdcHandleX;
