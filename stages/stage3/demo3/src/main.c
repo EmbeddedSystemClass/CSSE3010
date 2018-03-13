@@ -17,7 +17,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
-#define DATA_TIMER_FREQUENCY 500000
+#define DATA_TIMER_FREQUENCY 100000
 
 #define JOYSTICK_TO_FREQUENCY(adcValue) 		((adcValue / 4095.0) * 50)
 #define JOYSTICK_TO_LIGHTBAR_INDEX(adcValue) 	((adcValue * 10 / 4095) > 10 ? 9 : (adcValue * 10 / 4095))
