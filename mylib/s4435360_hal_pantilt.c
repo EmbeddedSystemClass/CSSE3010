@@ -95,7 +95,7 @@ TIM_OC_InitTypeDef sConfig; //PWM config
  * @param  Initial pulse values for the PWM channels
  * @retval None
  */
-void PWM_init(int pulse1, int pulse2, int pulse3, int pulse4) {
+void PWM_init(int pulse1, int pulse2) {
 
 	GPIO_InitTypeDef GPIO_InitStruct;
 
@@ -116,14 +116,6 @@ void PWM_init(int pulse1, int pulse2, int pulse3, int pulse4) {
 	GPIO_InitStruct.Alternate = TIMx_GPIO_AF_CHANNEL2;
 	GPIO_InitStruct.Pin = TIMx_GPIO_PIN_CHANNEL2;
 	HAL_GPIO_Init(TIMx_GPIO_PORT_CHANNEL2, &GPIO_InitStruct);
-
-	GPIO_InitStruct.Alternate = TIMx_GPIO_AF_CHANNEL3;
-	GPIO_InitStruct.Pin = TIMx_GPIO_PIN_CHANNEL3;
-	HAL_GPIO_Init(TIMx_GPIO_PORT_CHANNEL3, &GPIO_InitStruct);
-
-	GPIO_InitStruct.Alternate = TIMx_GPIO_AF_CHANNEL4;
-	GPIO_InitStruct.Pin = TIMx_GPIO_PIN_CHANNEL4;
-	HAL_GPIO_Init(TIMx_GPIO_PORT_CHANNEL4, &GPIO_InitStruct);
 
 	/* Set PWM timer fields */
 	prescalerValue = PRESCALAR;
@@ -161,30 +153,12 @@ void PWM_init(int pulse1, int pulse2, int pulse3, int pulse4) {
 		/* Configuration Error */
 	}
 
-	/* Set the pulse value for channel 3 */
-    sConfig.Pulse = pulse3;
-    if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_3) != HAL_OK) {
-		/* Configuration Error */
-	}
-
-	/* Set the pulse value for channel 4 */
-    sConfig.Pulse = pulse3;
-    if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_3) != HAL_OK) {
-		/* Configuration Error */
-	}
-
 	/* Start PWM signals generation */
 	if (HAL_TIM_PWM_Start(&TIM_Init, TIM_CHANNEL_1) != HAL_OK) {
 		/* PWM Generation Error */
 	}
 	if (HAL_TIM_PWM_Start(&TIM_Init, TIM_CHANNEL_2) != HAL_OK) {
 		/* PWM Generation Error */
-	}
-	if (HAL_TIM_PWM_Start(&TIM_Init, TIM_CHANNEL_3) != HAL_OK) {
-		/* PWM generation Error */
-	}
-	if (HAL_TIM_PWM_Start(&TIM_Init, TIM_CHANNEL_4) != HAL_OK) {
-		/* PWM generation Error */
 	}
 }
 
@@ -196,8 +170,6 @@ void PWM_init(int pulse1, int pulse2, int pulse3, int pulse4) {
 void s4435360_hal_pantilt_init(void) {
 	/* Initialises PWM to angle of 0 */
 	PWM_init(ANGLE_TO_PERIOD_REGISTER(0),
-			ANGLE_TO_PERIOD_REGISTER(0),
-			ANGLE_TO_PERIOD_REGISTER(0),
 			ANGLE_TO_PERIOD_REGISTER(0));
 }
 
