@@ -22,7 +22,8 @@
 #define INTERRUPT_FREQUENCY 		2
 #define ENTER_CHAR					(char)(13)
 #define BACKSPACE_CHAR				(char)(8)
-#define MAXUSERCHARS				23
+#define SPACE_CHAR					(char)(32)
+#define MAXUSERCHARS				7
 #define PAYLOAD_STARTING_INDEX		9
 #define PACKET_READY_TO_SEND		1
 #define PACKET_NOT_READY_TO_SEND	0
@@ -38,13 +39,20 @@ unsigned char rxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
 unsigned char channel = 52;
 int userCharCount = 0;
 char inputChar;
-uint8_t userPacket[32] = {0x20,						//Packet type
+uint8_t userPacket[32] = {0x20,					//Packet type
 		0x52, 0x33, 0x22, 0x11,					//Destination address
-		0x07, 0x36, 0x35, 0x44};				//Source address
+		0x07, 0x36, 0x35, 0x44, 				//Source address
+		SPACE_CHAR, SPACE_CHAR, SPACE_CHAR, SPACE_CHAR, SPACE_CHAR, SPACE_CHAR, SPACE_CHAR};
+
 TIM_HandleTypeDef TimInit;
 /* Private function prototypes -----------------------------------------------*/
 void HardwareInit();
 
+/**
+  * @brief  Processes a character input from terminal
+  * @param  Input character
+  * @retval 1 iff a packet is ready to send
+  */
 int handle_user_input(char input) {
 
 	if((userCharCount >= MAXUSERCHARS) || (input == ENTER_CHAR)) {
@@ -60,16 +68,26 @@ int handle_user_input(char input) {
 		userCharCount++;
 	}
 
-	/*debug_printf("Received: ");
-	for (int i = 0; i < PAYLOAD_STARTING_INDEX; i++) {
-		debug_printf("%x ", userPacket[i]);
-	}
-	for (int i = PAYLOAD_STARTING_INDEX; i < PAYLOAD_STARTING_INDEX + userCharCount + 1; i++) {
-		debug_printf("%c ", userPacket[i]);
-	}
-	debug_printf("\r\n");*/
-
 	return PACKET_NOT_READY_TO_SEND;
+}
+
+
+void print_received_packet(unsigned char* packet) {
+	debug_printf("RECV: ");
+
+	//Print source address
+	for (int i = 8; i > 4; i--) {
+		debug_printf("%x", packet[i]);
+	}
+
+	debug_printf(" > ");
+
+	//Print packet content
+	for (int i = 9; i < 15; i++) {
+		debug_printf("%c-", packet[i]);
+	}
+
+	debug_printf("%c\r\n", packet[15]);
 }
 
 /**
@@ -101,23 +119,24 @@ int main(void) {
 
     		if(radio_fsm_getstate() == RADIO_FSM_TX_STATE) {
 				/*Isolate user entered chars and header */
-				unsigned char packetToSend[PAYLOAD_STARTING_INDEX + userCharCount];
-				memcpy(packetToSend, userPacket, PAYLOAD_STARTING_INDEX + userCharCount);
+				memcpy(s4435360_tx_buffer, userPacket, PAYLOAD_STARTING_INDEX + userCharCount);
 
-				s4435360_radio_sendpacket(channel,  txAddress, packetToSend);
+				s4435360_radio_sendpacket(channel,  txAddress, s4435360_tx_buffer);
+
+				/* Reset packet */
 				s4435360_radio_txstatus = 0;
 				userCharCount = 0;
+				memset(&s4435360_tx_buffer[0], 0, sizeof(s4435360_tx_buffer));
     		}
     	}
 
 
     	/* Check for received packet */
+    	//s4435360_radio_setfsmrx();
+
     	if(s4435360_radio_getrxstatus()) {
-    		debug_printf("Received: ");
-    		for (int i = 0; i < 32; i++) {
-    			debug_printf("%x ", s4435360_rx_buffer[i]);
-    		}
-    		debug_printf("\r\n");
+    		s4435360_radio_getpacket(s4435360_rx_buffer);
+    		print_received_packet(s4435360_rx_buffer);
     		s4435360_radio_rxstatus = 0;
     	}
 

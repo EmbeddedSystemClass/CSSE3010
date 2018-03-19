@@ -10,6 +10,7 @@
 #ifndef S4435360_HAL_RADIO_H
 #define S4435360_HAL_RADIO_H
 
+/* FSM states */
 #define S4435360_IDLE_STATE			0
 #define S4435360_RX_STATE			1
 #define S4435360_TX_STATE			2
@@ -18,11 +19,13 @@
 
 #define RF_CHANNEL					52
 
+/* Radio variables */
 int s4435360_radio_fsmcurrentstate;
 int s4435360_radio_rxstatus, s4435360_radio_txstatus;
 unsigned char s4435360_rx_buffer[32];
 unsigned char s4435360_tx_buffer[16];
 
+/* Function prototypes */
 void s4435360_radio_init(void);
 void s4435360_radio_fsmprocessing();
 void s4435360_radio_setchan(unsigned char channel);
