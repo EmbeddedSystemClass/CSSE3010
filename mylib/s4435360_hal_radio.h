@@ -18,16 +18,23 @@
 
 #define RF_CHANNEL					52
 
+int s4435360_radio_fsmcurrentstate;
+int s4435360_radio_rxstatus, s4435360_radio_txstatus;
+unsigned char s4435360_rx_buffer[32];
+unsigned char s4435360_tx_buffer[16];
 
 void s4435360_radio_init(void);
 void s4435360_radio_fsmprocessing();
 void s4435360_radio_setchan(unsigned char channel);
 void s4435360_radio_settxaddress(unsigned char* addr);
+void s4435360_radio_setrxaddress(unsigned char* addr);
+void s4435360_radio_getrxaddress(unsigned char* addr) ;
 unsigned char s4435360_radio_getchan(void);
 void s4435360_radio_gettxaddress(unsigned char* addr);
 void s4435360_radio_sendpacket(char channel, unsigned char* addr, unsigned char* txpacket);
 void s4435360_radio_setfsmrx();
 int s4435360_radio_getrxstatus();
+int s4435360_radio_gettxstatus();
 void s4435360_radio_getpacket(unsigned char* rxpacket);
 
 
