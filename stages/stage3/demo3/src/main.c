@@ -20,7 +20,7 @@
 #define DATA_TIMER_FREQUENCY 100000
 
 #define JOYSTICK_TO_FREQUENCY(adcValue) 		((adcValue / 4095.0) * 50)
-#define JOYSTICK_TO_LIGHTBAR_INDEX(adcValue) 	((adcValue * 10 / 4095) > 10 ? 9 : (adcValue * 10 / 4095))
+#define JOYSTICK_TO_LIGHTBAR_INDEX(adcValue) 	((adcValue * 10 / 4095) >= 10 ? 9 : (adcValue * 10 / 4095))
 #define FREQUENCY_TO_PERIOD_REGISTER(frequency) (DATA_TIMER_FREQUENCY / frequency)
 #define CHANGE_PERIOD_REGISTER(value) 		__HAL_TIM_SET_AUTORELOAD(&dataTimInit, value)
 #define CHANGE_COUNTER_REGISTER(value) 		__HAL_TIM_SET_COUNTER(&dataTimInit, value)
@@ -64,9 +64,12 @@ void change_timer_frequency(float frequency) {
 	/* Check for edge case (register overflow at low frequencies) */
 	if(frequency < DATA_TIMER_FREQUENCY / 65535.0) {
 		periodRegister = 65535;
+		s4435360_hal_ir_carrier_off();
 	} else {
+		s4435360_hal_ir_carrier_on();
 		periodRegister = FREQUENCY_TO_PERIOD_REGISTER(frequency);
 	}
+
 
 	/* Change counter register to preserve portion through period */
 	CHANGE_COUNTER_REGISTER((__HAL_TIM_GET_COUNTER(&dataTimInit) /
@@ -222,7 +225,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 			uhCaptureIndex = 0;
 
 			if(uwFrequency <= 50) {
-				debug_printf("IR receiver frequency: %d\n\r", uwFrequency);
+				//debug_printf("IR receiver frequency: %d\n\r", uwFrequency);
 			}
 		}
 	}
@@ -250,12 +253,16 @@ int main(void) {
 	unsigned int adcX;
 
 	/* Infinite loop */
-	while (1) {
+	while(1) {
 
 		adcX = s4435360_hal_joystick_x_read();
 
 		change_timer_frequency(JOYSTICK_TO_FREQUENCY(adcX));
 		s4435360_lightbar_write(1 << (int)JOYSTICK_TO_LIGHTBAR_INDEX(adcX));
+
+		if (uwFrequency <= 50) {
+			debug_printf("IR receiver frequency: %d\r\n", uwFrequency);
+		}
 
 		HAL_Delay(100);
 	}
