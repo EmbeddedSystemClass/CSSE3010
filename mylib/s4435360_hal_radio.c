@@ -13,15 +13,15 @@
 
 #include "debug_printf.h"
 #include "stm32f4xx_hal_conf.h"
+#include "stm32f4xx_hal.h"
 #include "board.h"
 #include "radio_fsm.h"
 #include "nrf24l01plus.h"
 #include "assert.h"
-
+#include "string.h"
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-int i;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
@@ -39,9 +39,6 @@ void s4435360_radio_init(void) {
 	s4435360_radio_txstatus = 0;
 
 	s4435360_radio_fsmcurrentstate = S4435360_IDLE_STATE;
-	unsigned char enableRXRegister = 0b00111111;
-	radio_fsm_register_write(NRF24L01P_EN_RXADDR, &enableRXRegister);
-
 
 }
 
@@ -114,7 +111,7 @@ void s4435360_radio_fsmprocessing() {
 			//Error
 			} else {
 
-				debug_printf("ERROR: Radio FSM no in IDLE state\r\n");
+				debug_printf("ERROR: Radio FSM not in IDLE state\r\n");
 				radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
 			}
 
@@ -161,7 +158,6 @@ void s4435360_radio_setchan(unsigned char channel) {
 void s4435360_radio_settxaddress(unsigned char* addr) {
 	radio_fsm_buffer_write(NRF24L01P_TX_ADDR, addr, 5);
 }
-
 
 /**
  * @brief Set the receive address of the radio
@@ -210,11 +206,12 @@ void s4435360_radio_getrxaddress(unsigned char* addr) {
  * @retval None
  */
 void s4435360_radio_sendpacket(char channel, unsigned char* addr, unsigned char* txpacket) {
-	//radio_fsm_setstate(S4435360_TX_STATE);
-	//s4435360_radio_setchan(channel);
-	//s4435360_radio_settxaddress(addr);
+	radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
+	s4435360_radio_setchan(channel);
+	s4435360_radio_settxaddress(addr);
+
 	memcpy(s4435360_tx_buffer, txpacket, 16);
-	radio_fsm_setstate(S4435360_TX_STATE);
+	radio_fsm_setstate(RADIO_FSM_TX_STATE);
 	radio_fsm_write(s4435360_tx_buffer);
 
 }
@@ -225,7 +222,7 @@ void s4435360_radio_sendpacket(char channel, unsigned char* addr, unsigned char*
  * @retval None
  */
 void s4435360_radio_setfsmrx() {
-	s4435360_radio_fsmcurrentstate = S4435360_RX_STATE;
+	//s4435360_radio_fsmcurrentstate = S4435360_RX_STATE;
 }
 
 /**
