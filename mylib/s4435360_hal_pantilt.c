@@ -15,13 +15,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include <s4435360_hal_pantilt.h>
 
-//#include "stm32f4xx_hal_rcc.h"
-//#include "stm32f4xx_hal_tim.h"
 #include "stm32f4xx_hal_conf.h"
 #include "debug_printf.h"
-//#include "stm32f4xx_hal_gpio.h"
-//#include "stm32f4xx_hal.h"
-//#include "stm32f4xx.h"
 #include "board.h"
 
 /* Clock scaling and timing values */
@@ -41,37 +36,27 @@
 #define  PERIOD_REGISTER_TO_ANGLE(value) PULSE_PERIOD_TO_ANGLE(PULSE_REGISTER_TO_PERIOD(value))
 
 /* Definition for TIMx clock resources */
-#define TIMx       			    TIM1
-#define TIMx_CLK_ENABLE()       __HAL_RCC_TIM1_CLK_ENABLE()
+#define TIMx       			    TIM4
+#define TIMx_CLK_ENABLE()       __HAL_RCC_TIM4_CLK_ENABLE()
 
 /* Definition for TIMx Channel Pins */
-#define TIMx_CHANNEL_GPIO_PORT()       __HAL_RCC_GPIOE_CLK_ENABLE();
-#define TIMx_GPIO_PORT_CHANNEL1        GPIOE
-#define TIMx_GPIO_PORT_CHANNEL2        GPIOE
-#define TIMx_GPIO_PORT_CHANNEL3        GPIOE
-#define TIMx_GPIO_PORT_CHANNEL4        GPIOE
-#define TIMx_GPIO_PIN_CHANNEL1         GPIO_PIN_9
-#define TIMx_GPIO_PIN_CHANNEL2         GPIO_PIN_11
-#define TIMx_GPIO_PIN_CHANNEL3         GPIO_PIN_13
-#define TIMx_GPIO_PIN_CHANNEL4         GPIO_PIN_14
-#define TIMx_GPIO_AF_CHANNEL1          GPIO_AF1_TIM1
-#define TIMx_GPIO_AF_CHANNEL2          GPIO_AF1_TIM1
-#define TIMx_GPIO_AF_CHANNEL3          GPIO_AF1_TIM1
-#define TIMx_GPIO_AF_CHANNEL4          GPIO_AF1_TIM1
+#define TIMx_CHANNEL_GPIO_PORT()       __HAL_RCC_GPIOD_CLK_ENABLE();
+#define TIMx_GPIO_PORT_CHANNEL1        GPIOD
+#define TIMx_GPIO_PORT_CHANNEL2        GPIOD
+#define TIMx_GPIO_PIN_CHANNEL1         GPIO_PIN_13
+#define TIMx_GPIO_PIN_CHANNEL2         GPIO_PIN_12
+#define TIMx_GPIO_AF_CHANNEL1          GPIO_AF2_TIM4
+#define TIMx_GPIO_AF_CHANNEL2          GPIO_AF2_TIM4
 
-TIM_HandleTypeDef TIM_Init;
+
+TIM_HandleTypeDef servoInit;
 
 /* Macros for getting and setting PWM register compare values */
-#define PWM_TIMER_HANDLER    TIM_Init
-#define PWM_CHANNEL1_GET() 		__HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_1)
+#define PWM_TIMER_HANDLER    		servoInit
+#define PWM_CHANNEL1_GET() 			__HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_1)
 #define PWM_CHANNEL1_SET(value) 	__HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_1, value)
-#define PWM_CHANNEL2_GET() 		__HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_2)
+#define PWM_CHANNEL2_GET() 			__HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_2)
 #define PWM_CHANNEL2_SET(value) 	__HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_2, value)
-#define PWM_CHANNEL3_GET()         __HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_3)
-#define PWM_CHANNEL3_SET(value)     __HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_3, value)
-#define PWM_CHANNEL4_GET()         __HAL_TIM_GET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_4)
-#define PWM_CHANNEL4_SET(value)     __HAL_TIM_SET_COMPARE(&PWM_TIMER_HANDLER, TIM_CHANNEL_4, value)
-
 
 /*Wrappers for defining tilt/pan set and get */
 #define PWM_CHANNEL_PAN_SET(value)  PWM_CHANNEL1_SET(value)
@@ -119,14 +104,14 @@ void PWM_init(int pulse1, int pulse2) {
 
 	/* Set PWM timer fields */
 	prescalerValue = PRESCALAR;
-	TIM_Init.Instance = TIMx;
+	servoInit.Instance = TIMx;
 
-	TIM_Init.Init.Prescaler         = prescalerValue;
-	TIM_Init.Init.Period            = PERIOD_VALUE;
-	TIM_Init.Init.ClockDivision     = 0;
-	TIM_Init.Init.CounterMode       = TIM_COUNTERMODE_UP;
-	TIM_Init.Init.RepetitionCounter = 0;
-	if (HAL_TIM_PWM_Init(&TIM_Init) != HAL_OK) {
+	servoInit.Init.Prescaler         = prescalerValue;
+	servoInit.Init.Period            = PERIOD_VALUE;
+	servoInit.Init.ClockDivision     = 0;
+	servoInit.Init.CounterMode       = TIM_COUNTERMODE_UP;
+	servoInit.Init.RepetitionCounter = 0;
+	if (HAL_TIM_PWM_Init(&servoInit) != HAL_OK) {
 		/* Initialization Error */
 	}
 
@@ -142,22 +127,22 @@ void PWM_init(int pulse1, int pulse2) {
 
 	/* Set the pulse value for channel 1 */
     sConfig.Pulse = pulse1;
-    if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_1) != HAL_OK) {
+    if (HAL_TIM_PWM_ConfigChannel(&servoInit, &sConfig, TIM_CHANNEL_1) != HAL_OK) {
 		/* Configuration Error */
 	}
 
 	/* Set the pulse value for channel 2 */
     sConfig.Pulse = pulse2;
-    if (HAL_TIM_PWM_ConfigChannel(&TIM_Init, &sConfig, TIM_CHANNEL_2) != HAL_OK) {
+    if (HAL_TIM_PWM_ConfigChannel(&servoInit, &sConfig, TIM_CHANNEL_2) != HAL_OK) {
 
 		/* Configuration Error */
 	}
 
 	/* Start PWM signals generation */
-	if (HAL_TIM_PWM_Start(&TIM_Init, TIM_CHANNEL_1) != HAL_OK) {
+	if (HAL_TIM_PWM_Start(&servoInit, TIM_CHANNEL_1) != HAL_OK) {
 		/* PWM Generation Error */
 	}
-	if (HAL_TIM_PWM_Start(&TIM_Init, TIM_CHANNEL_2) != HAL_OK) {
+	if (HAL_TIM_PWM_Start(&servoInit, TIM_CHANNEL_2) != HAL_OK) {
 		/* PWM Generation Error */
 	}
 }
@@ -190,7 +175,6 @@ void pantilt_angle_write(int type, int angle) {
 	/* Switch PAN and TILT cases */
 	switch(type) {
 		case PAN:
-
 			PWM_CHANNEL_PAN_SET(ANGLE_TO_PERIOD_REGISTER(angle));
 			break;
 

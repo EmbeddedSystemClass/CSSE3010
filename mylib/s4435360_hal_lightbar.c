@@ -106,9 +106,9 @@ void s4435360_lightbar_init(void) {
 
 	GPIO_InitTypeDef GPIO_Init;
 
-	__GPIOA_CLK_ENABLE();
-	__GPIOB_CLK_ENABLE();
 	__GPIOC_CLK_ENABLE();
+	__GPIOD_CLK_ENABLE();
+	__GPIOG_CLK_ENABLE();
 
 	GPIO_Init.Pin = LIGHTBAR_PIN0;
 	GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;

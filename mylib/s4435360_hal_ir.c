@@ -20,6 +20,9 @@
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef carrierTimInit;
 TIM_OC_InitTypeDef carrierConfig;
+
+TIM_HandleTypeDef rx_TIM_Init;
+TIM_IC_InitTypeDef sICConfig;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
@@ -30,6 +33,7 @@ TIM_OC_InitTypeDef carrierConfig;
  */
 void s4435360_hal_ir_init(void) {
 
+	/* TX carrier and modulation pin init */
 	GPIO_InitTypeDef GPIO_InitStruct;
 	TIM_OC_InitTypeDef PWMConf;
 
@@ -67,7 +71,6 @@ void s4435360_hal_ir_init(void) {
 	/* Start carrier wave */
 	HAL_TIM_PWM_Start(&carrierTimInit, CARRIER_CHANNEL);
 
-
 	/* Initialise modulation signal output pin */
 	GPIO_InitTypeDef GPIO_Init;
 
@@ -78,6 +81,51 @@ void s4435360_hal_ir_init(void) {
 	GPIO_Init.Pull = GPIO_PULLUP;
 	GPIO_Init.Speed = GPIO_SPEED_FAST;
 	HAL_GPIO_Init(MODULATION_PORT, &GPIO_Init);
+
+	/* RX input capture init */
+	GPIO_InitTypeDef GPIO_InitStructure;
+	__INPUT_CAPTURE_CLK_ENABLE();
+	__RX_PIN_CLK_ENABLE();
+
+	GPIO_InitStructure.Pin = RX_INPUT_PIN;
+	GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;
+	GPIO_InitStructure.Pull = GPIO_NOPULL;
+	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_MEDIUM;
+	GPIO_InitStructure.Alternate = INPUT_GPIO_AF;
+
+	HAL_GPIO_Init(RX_INPUT_PORT, &GPIO_InitStructure);
+	HAL_NVIC_SetPriority(TIM2_IRQn, 0x0F, 0x00);
+	HAL_NVIC_EnableIRQ(TIM2_IRQn);
+
+	//TIM Base configuration
+	rx_TIM_Init.Instance = RX_TIM;
+	rx_TIM_Init.Init.Period = 0xFFFF; //Minimise update events
+	rx_TIM_Init.Init.Prescaler = (uint16_t) ((SystemCoreClock / 2) / 50000) - 1;
+	rx_TIM_Init.Init.ClockDivision = 0;
+	rx_TIM_Init.Init.RepetitionCounter = 0;
+	rx_TIM_Init.Init.CounterMode = TIM_COUNTERMODE_UP;
+
+	if (HAL_TIM_IC_Init(&rx_TIM_Init) != HAL_OK) {
+		debug_printf("Initialisation Error: IR Receiver "
+				"Timer Pin D35\r\n");
+	}
+
+	// Configure the Input Capture channel
+	sICConfig.ICPolarity = TIM_ICPOLARITY_RISING;
+	sICConfig.ICSelection = TIM_ICSELECTION_DIRECTTI;
+	sICConfig.ICPrescaler = TIM_ICPSC_DIV1;
+	sICConfig.ICFilter = 0;
+	if (HAL_TIM_IC_ConfigChannel(&rx_TIM_Init, &sICConfig, RX_TIM_CHANNEL)
+			!= HAL_OK) {
+		debug_printf("Initialisation Error: IR Receiver "
+				"Input Capture Pin D35\r\n");
+	}
+
+	// Start the Input Capture in interrupt mode
+	if (HAL_TIM_IC_Start_IT(&rx_TIM_Init, RX_TIM_CHANNEL) != HAL_OK) {
+		debug_printf("Initialisation Error: IR Receiver Input "
+				"Capture Start Pin D35\r\n");
+	}
 }
 
 /**

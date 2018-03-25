@@ -33,6 +33,16 @@
 #define MODULATION_PIN		BRD_D36_PIN //Pin to output modulation signal
 #define __MODULATION_CLK_ENABLE()	__BRD_D36_GPIO_CLK() //Clock enable function for modulation signal output pin
 
+/* Input capture parameters */
+#define __INPUT_CAPTURE_CLK_ENABLE() 	__TIM2_CLK_ENABLE()
+#define __RX_PIN_CLK_ENABLE()			__BRD_D35_GPIO_CLK()
+#define RX_INPUT_PIN					BRD_D35_PIN
+#define RX_INPUT_PORT					BRD_D35_GPIO_PORT
+#define INPUT_GPIO_AF					GPIO_AF1_TIM2
+#define RX_TIM							TIM2
+#define RX_TIM_CHANNEL					TIM_CHANNEL_4
+
+
 void irhal_carrier(int state);
 
 /**
