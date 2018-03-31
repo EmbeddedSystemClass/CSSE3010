@@ -10,9 +10,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "pantilt_terminal_mode.h"
 
-#include "board.h"
-#include "stm32f4xx_hal_conf.h"
-#include "debug_printf.h"
 #include "s4435360_hal_pantilt.h"
 
 TIM_HandleTypeDef printTimInit;
@@ -38,19 +35,10 @@ void pantilt_terminal_init(void) {
 
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	debug_printf("Pan:  %d Tilt:  %d\r\n",
-			s4435360_hal_pantilt_pan_read(),
-			s4435360_hal_pantilt_tilt_read());
-}
-
-void TIM5_IRQHandler(void) {
-	HAL_TIM_IRQHandler(&printTimInit);
-}
 
 void pantilt_terminal_deinit(void) {
-	debug_printf("Exiting pantilt terminal mode\r\n");
 	HAL_TIM_Base_Stop_IT(&printTimInit);
+	debug_printf("Exiting pantilt terminal mode\r\n");
 }
 
 void pantilt_terminal_run(void) {

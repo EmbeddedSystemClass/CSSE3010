@@ -15,10 +15,4 @@ void pantilt_terminal_deinit(void);
 void pantilt_terminal_run(void);
 void pantilt_terminal_user_input(char input);
 
-ModeFunctions pantiltTerminalModeFunctions = {.modeID = 0x01,
-												.init = &pantilt_terminal_init,
-												.deinit = &pantilt_terminal_deinit,
-												.run = &pantilt_terminal_run,
-												.userInput = &pantilt_terminal_user_input};
-
 #endif

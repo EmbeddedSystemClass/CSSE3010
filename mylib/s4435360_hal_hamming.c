@@ -26,6 +26,8 @@
   * @brief  Performs hamming encoding on half
   * a byte and adds an even parity check.
   *
+  * y = xG
+  *
   * G = [1 1 1 | 1 0 0 0]
   * 	[1 0 1 | 0 1 0 0]
   * 	[1 1 0 | 0 0 1 0]
@@ -48,13 +50,13 @@ uint8_t hamming_hbyte_encoder(uint8_t in) {
 	d3 = !!(in & 0x8);
 
 	/* calculate hamming parity bits */
-	h0 = d0 ^ d1 ^ d2;
-	h1 = d0 ^ d2 ^ d3;
-	h2 = d0 ^ d1 ^ d3;
+	h0 = d3 ^ d2 ^ d1;
+	h1 = d3 ^ d1 ^ d0;
+	h2 = d3 ^ d2 ^ d0;
 
 	/* generate out byte without parity bit P0 */
-	out = (h0 << 1) | (h1 << 2) | (h2 << 3) |
-		(d0 << 4) | (d1 << 5) | (d2 << 6) | (d3 << 7);
+	out = (h0 << 7) | (h1 << 6) | (h2 << 5) |
+		(d0 << 1) | (d1 << 2) | (d2 << 3) | (d3 << 4);
 
 	/* calculate even parity bit */
 	for (z = 1; z < 8; z++)
@@ -68,6 +70,8 @@ uint8_t hamming_hbyte_encoder(uint8_t in) {
 /**
   * @brief  Decodes a full byte of encoded data
   * into half a byte.
+  *
+  * s = Hy(transpose)
   *
   * H = [1 0 0 | 1 1 1 0]
   * 	[0 1 0 | 1 0 1 1]
@@ -91,18 +95,18 @@ uint8_t hamming_hbyte_decoder(uint8_t in) {
 
 	//debug_printf("Parity %d\r\n", p0);
 
-	uint8_t h0 = !!(in & 2);
-	uint8_t h1 = !!(in & 4);
-	uint8_t h2 = !!(in & 8);
+	uint8_t h0 = !!(in & 128);
+	uint8_t h1 = !!(in & 64);
+	uint8_t h2 = !!(in & 32);
 
-	uint8_t d0 = !!(in & 16);
-	uint8_t d1 = !!(in & 32);
-	uint8_t d2 = !!(in & 64);
-	uint8_t d3 = !!(in & 128);
+	uint8_t d3 = !!(in & 16);
+	uint8_t d2 = !!(in & 8);
+	uint8_t d1 = !!(in & 4);
+	uint8_t d0 = !!(in & 2);
 
-	s0 = h0 ^ d0 ^ d1 ^ d2;
-	s1 = h1 ^ d0 ^ d2 ^ d3;
-	s2 = h2 ^ d0 ^ d1 ^ d3;
+	s0 = h0 ^ d3 ^ d2 ^ d1;
+	s1 = h1 ^ d3 ^ d1 ^ d0;
+	s2 = h2 ^ d3 ^ d2 ^ d0;
 
 
 	int8_t syndrome = (s0 << 0) | (s1 << 1) | (s2 <<2);
@@ -122,27 +126,32 @@ uint8_t hamming_hbyte_decoder(uint8_t in) {
 		//}
 	}
 
+
+	/* H = [1 0 0 | 1 1 1 0]
+	  * 	[0 1 0 | 1 0 1 1]
+	  * 	[0 0 1 | 1 1 0 1]
+	*/
 	switch(syndrome) {
-		case 7:
-			d0 ^= (0x01);
-			break;
-		case 5:
-			d1 ^= (0x01);
-			break;
-		case 6:
-			d2 ^= (0x01);
-			break;
-		case 3:
-			d3 ^= (0x01);
-			break;
-		case 4:
+		case 1:
 			h0 ^= (0x01);
 			break;
 		case 2:
 			h1 ^= (0x01);
 			break;
-		case 1:
+		case 4:
 			h2 ^= (0x01);
+			break;
+		case 7:
+			d3 ^= (0x01);
+			break;
+		case 5:
+			d2 ^= (0x01);
+			break;
+		case 3:
+			d1 ^= (0x01);
+			break;
+		case 6:
+			d0 ^= (0x01);
 			break;
 		default:
 			return UNCORRECTABLE_ERROR;

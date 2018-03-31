@@ -8,6 +8,10 @@
 #ifndef STRUCTURES_H_
 #define STRUCTURES_H_
 
+#include "board.h"
+#include "stm32f4xx_hal.h"
+#include "debug_printf.h"
+
 #define IDLE_CHAR					'1'
 #define PANTILT_TERMINAL_CHAR		'2'
 #define PANTILT_JOYSTICK_CHAR		'3'
@@ -20,6 +24,10 @@
 #define HANDLED_USER_INPUT			1
 #define UNHANDLED_USER_INPUT		0
 
+#define HEARTBEAT_PERIOD 			5
+#define HEARTBEAT_SEGMENT			0
+#define MODE_ID_SEGMENT				1
+
 typedef struct {
 
 	uint8_t modeID;
@@ -30,5 +38,6 @@ typedef struct {
 
 } ModeFunctions;
 
+ModeFunctions currentModeFunctions;
 
 #endif /* STRUCTURES_H_ */

@@ -9,7 +9,7 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include <s4435360_hal_radio.h>
+#include "s4435360_hal_radio.h"
 
 #include "debug_printf.h"
 #include "stm32f4xx_hal_conf.h"

@@ -9,14 +9,16 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "structures.h"
-/*
-#include "pantilt_terminal_mode.h"
-#include "pantilt_joystick_mode.h"
-*/
+#include "s4435360_hal_hamming.h"
+#include "s4435360_hal_ir.h"
 #include "s4435360_hal_lightbar.h"
 #include "s4435360_hal_pantilt.h"
+#include "s4435360_hal_radio.h"
 #include "s4435360_hal_joystick.h"
-#include "debug_printf.h"
+#include "s4435360_hal_pantilt.h"
+#include "pantilt_terminal_mode.h"
+#include "pantilt_joystick_mode.h"
+#include "encode_decode_mode.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -26,18 +28,23 @@
 int heartbeatCounter = 0;
 uint8_t lightbarValue = 0x00;
 
-/*ModeFunctions pantiltTerminalModeFunctions = {.modeID = 0x01,
-												.init = &pantilt_terminal_init,
-												.deinit = &pantilt_terminal_deinit,
-												.run = &pantilt_terminal_run,
-												.userInput = &pantilt_terminal_user_input};
+ModeFunctions pantiltTerminalModeFunctions = {.modeID = 0x01,
+		.init = &pantilt_terminal_init,
+		.deinit = &pantilt_terminal_deinit,
+		.run = &pantilt_terminal_run,
+		.userInput = &pantilt_terminal_user_input};
 
 ModeFunctions pantiltJoystickModeFunctions = {.modeID = 0x02,
-												.init = &pantilt_joystick_init,
-												.deinit = &pantilt_joystick_deinit,
-												.run = &pantilt_joystick_run,
-												.userInput = &pantilt_joystick_user_input};*/
+		.init = &pantilt_joystick_init,
+		.deinit = &pantilt_joystick_deinit,
+		.run = &pantilt_joystick_run,
+		.userInput = &pantilt_joystick_user_input};
 
+ModeFunctions encodeDecodeModeFunctions = {.modeID = 0x03,
+		.init = &encode_decode_init,
+		.deinit = &encode_decode_deinit,
+		.run = &encode_decode_run,
+		.userInput = & encode_decode_user_input};
 
 
 void idle_init(void);
@@ -69,6 +76,8 @@ void idle_run(void) {
 
 void idle_user_input(char input) {
 
+	debug_printf("Entering switch with input: %c\r\n", input);
+
 	ModeFunctions nextModeFunctions;
 
 	switch(input) {
@@ -77,16 +86,16 @@ void idle_user_input(char input) {
 			nextModeFunctions = idleModeFunctions;
 			break;
 
-/*		case PANTILT_TERMINAL_CHAR:
+		case PANTILT_TERMINAL_CHAR:
 			nextModeFunctions = pantiltTerminalModeFunctions;
 			break;
 
 		case PANTILT_JOYSTICK_CHAR:
 			nextModeFunctions = pantiltJoystickModeFunctions;
-			break;*/
+			break;
 
 		case ENCODE_DECODE_CHAR:
-			nextModeFunctions = idleModeFunctions;
+			nextModeFunctions = encodeDecodeModeFunctions;
 			break;
 
 		case IR_DUPLEX_CHAR:
@@ -111,7 +120,9 @@ void idle_user_input(char input) {
 			debug_printf("6 Radio Duplex\r\n");
 			debug_printf("7 Integration\r\n");
 			debug_printf("\r\n");
-			break;
+			return;
+		default:
+			return;
 	}
 
 	(*currentModeFunctions.deinit)();
@@ -133,11 +144,11 @@ void update_heartbeat(void) {
 	}
 }
 
-int main(void) {
+void main(void) {
 
-	BRD_init();
 	BRD_LEDInit();
-	//s4435360_hal_ir_init();
+	BRD_init();
+	s4435360_hal_ir_init();
 	s4435360_hal_joystick_init();
 	s4435360_lightbar_init();
 	s4435360_hal_pantilt_init();
@@ -147,12 +158,10 @@ int main(void) {
 	char userInput;
 
 	while(1) {
-		debug_printf("I am here\r\n");
 
 		userInput = debug_getc();
 
-		if(!userInput) {
-			debug_printf(" The current input %c\r\n", userInput);
+		if(userInput) {
 			if(userInput == ESCAPE_CHAR) {
 				idle_user_input('1');
 			} else {

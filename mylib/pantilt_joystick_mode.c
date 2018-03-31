@@ -10,9 +10,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "pantilt_joystick_mode.h"
 
-#include "board.h"
-#include "stm32f4xx_hal_conf.h"
-#include "debug_printf.h"
 #include "s4435360_hal_pantilt.h"
 #include "s4435360_hal_joystick.h"
 
