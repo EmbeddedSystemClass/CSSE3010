@@ -14,9 +14,21 @@
 
 #include "stdint.h"
 
+#define UNCORRECTABLE_ERROR		0xFF
+
+typedef struct {
+
+	uint8_t decodedOutput;
+	uint16_t fullDecodedOutput;
+	int uncorrectableError = 0;
+	uint8_t errorMask = 0x00;
+
+} HammingDecodedOutput;
+
+
 uint8_t hamming_hbyte_encoder(uint8_t in);
 uint8_t hamming_hbyte_decoder(uint8_t in);
 uint16_t hamming_byte_encoder(uint8_t input);
-uint8_t hamming_byte_decoder(uint16_t input);
+HammingDecodedOutput hamming_byte_decoder(uint16_t input);
 
 #endif

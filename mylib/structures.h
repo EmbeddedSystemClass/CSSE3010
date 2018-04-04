@@ -17,8 +17,9 @@
 #define PANTILT_JOYSTICK_CHAR		'3'
 #define ENCODE_DECODE_CHAR			'4'
 #define IR_DUPLEX_CHAR				'5'
-#define RADIO_DUPLEX_CHAR			'6'
-#define INTEGRATION_CHAR			'7'
+#define HAMMING_ENCODE_DECODE_CHAR	'6'
+#define RADIO_DUPLEX_CHAR			'7'
+#define INTEGRATION_CHAR			'8'
 #define HELP_CHAR					'?'
 
 #define HANDLED_USER_INPUT			1
