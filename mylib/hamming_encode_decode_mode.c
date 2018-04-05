@@ -8,9 +8,9 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "structures.h"
 #include "hamming_encode_decode_mode.h"
 #include "s4435360_hal_hamming.h"
-#include "debug_printf.h"
 
 #define START_MODE				0
 #define HAMMING_MODE	 		1
@@ -80,9 +80,9 @@ void hamming_encode_decode_run(void) {
 		HammingDecodedOutput output = hamming_byte_decoder(toHammingDecode);
 
 		if(output.uncorrectableError) {
-			debug_printf('2-bit ERROR\r\n');
+			debug_printf("2-bit ERROR\r\n");
 		} else {
-			debug_printf('%X (Full: %X ErrMask: %d)\r\n',
+			debug_printf("%X (Full: %X ErrMask: %d)\r\n",
 					output.decodedOutput,
 					output.fullDecodedOutput,
 					output.errorMask);
@@ -135,3 +135,7 @@ void hamming_encode_decode_user_input(char input) {
 
 	}
 }
+
+void hamming_encode_decode_timer1_handler(void){}
+
+void hamming_encode_decode_timer2_handler(void){}

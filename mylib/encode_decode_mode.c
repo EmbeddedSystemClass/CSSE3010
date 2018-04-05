@@ -8,9 +8,9 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "structures.h"
 #include "encode_decode_mode.h"
 #include "s4435360_hal_manchester.h"
-#include "debug_printf.h"
 
 #define START_MODE				0
 #define MANCHESTER_MODE 		1
@@ -124,3 +124,7 @@ void encode_decode_user_input(char input) {
 
 	}
 }
+
+void encode_decode_timer1_handler(void){}
+
+void encode_decode_timer2_handler(void){}

@@ -20,8 +20,8 @@ typedef struct {
 
 	uint8_t decodedOutput;
 	uint16_t fullDecodedOutput;
-	int uncorrectableError = 0;
-	uint8_t errorMask = 0x00;
+	int uncorrectableError;
+	uint8_t errorMask;
 
 } HammingDecodedOutput;
 

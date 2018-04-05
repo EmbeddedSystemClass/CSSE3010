@@ -9,11 +9,11 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "string.h"
+#include "structures.h"
 #include "radio_fsm.h"
 #include "nrf24l01plus.h"
 #include "s4435360_hal_radio.h"
-#include "string.h"
-#include "structures.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -42,7 +42,6 @@ uint8_t userPacket[32] = {0x20,					//Packet type
 		0x52, 0x33, 0x22, 0x11,					//Destination address
 		0x07, 0x36, 0x35, 0x44}; 				//Source address
 
-TIM_HandleTypeDef fsmTimInit;
 /* Private function prototypes -----------------------------------------------*/
 
 void radio_duplex_init(void) {
@@ -60,18 +59,18 @@ void radio_duplex_init(void) {
 	__TIM3_CLK_ENABLE();
 
 	/* TIM Base configuration */
-	fsmTimInit.Instance = TIM6;
-	fsmTimInit.Init.Period = TIMER_FREQUENCY / INTERRUPT_FREQUENCY;
-	fsmTimInit.Init.Prescaler = (uint16_t) ((SystemCoreClock) / TIMER_FREQUENCY) - 1;
-	fsmTimInit.Init.ClockDivision = 0;
-	fsmTimInit.Init.RepetitionCounter = 0;
-	fsmTimInit.Init.CounterMode = TIM_COUNTERMODE_UP;
+	timer1Init.Instance = TIM6;
+	timer1Init.Init.Period = TIMER_FREQUENCY / INTERRUPT_FREQUENCY;
+	timer1Init.Init.Prescaler = (uint16_t) ((SystemCoreClock) / TIMER_FREQUENCY) - 1;
+	timer1Init.Init.ClockDivision = 0;
+	timer1Init.Init.RepetitionCounter = 0;
+	timer1Init.Init.CounterMode = TIM_COUNTERMODE_UP;
 
 	/* Initialise Timer */
-	HAL_TIM_Base_Init(&fsmTimInit);
-	HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 10, 0);
-	HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
-	HAL_TIM_Base_Start_IT(&fsmTimInit);
+	HAL_TIM_Base_Init(&timer1Init);
+	HAL_NVIC_SetPriority(TIMER1_IRQ, 10, 0);
+	HAL_NVIC_EnableIRQ(TIMER1_IRQ);
+	HAL_TIM_Base_Start_IT(&timer1Init);
 
 
 	s4435360_radio_init();
@@ -83,7 +82,7 @@ void radio_duplex_init(void) {
 }
 
 void radio_duplex_deinit(void) {
-	HAL_TIM_Base_Stop_IT(&fsmTimInit);
+	HAL_TIM_Base_Stop_IT(&timer1Init);
 }
 
 void radio_duplex_run(void) {
@@ -95,7 +94,7 @@ void radio_duplex_run(void) {
 			memcpy(s4435360_tx_buffer, userPacket, PAYLOAD_STARTING_INDEX + userCharCount);
 
 			s4435360_radio_sendpacket(channel,  txAddress, s4435360_tx_buffer);
-			print_sent_packet(s4435360_tx_buffer);
+			//print_sent_packet(s4435360_tx_buffer);
 
 			/* Reset packet */
 			s4435360_radio_txstatus = 0;
@@ -116,7 +115,7 @@ void radio_duplex_run(void) {
 
 	if(s4435360_radio_getrxstatus()) {
 		s4435360_radio_getpacket(s4435360_rx_buffer);
-		print_received_packet(s4435360_rx_buffer);
+		//print_received_packet(s4435360_rx_buffer);
 		s4435360_radio_rxstatus = 0;
 	}
 }
@@ -179,6 +178,8 @@ void radio_duplex_user_input(char input) {
 
 }
 
-void TIM6_DAC_IRQHandler(void) {
+void radio_duplex_timer1_handler(void) {
 	s4435360_radio_fsmprocessing();
 }
+
+void radio_duplex_timer2_handler(void) {}

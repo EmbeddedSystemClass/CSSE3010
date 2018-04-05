@@ -29,6 +29,17 @@
 #define HEARTBEAT_SEGMENT			0
 #define MODE_ID_SEGMENT				1
 
+#define TIMER1						TIM5
+#define TIMER2						TIM7
+#define TIMER1_IRQ					TIM5_IRQn
+#define TIMER2_IRQ					TIM7_IRQn
+#define __TIMER1_CLK_ENABLE() 		__TIM5_CLK_ENABLE()
+#define __TIMER2_CLK_ENABLE()		__TIM7_CLK_ENABLE()
+#define TIMER1_HANDLER				TIM5_IRQHandler
+#define TIMER2_HANDLER				TIM7_IRQHandler
+
+TIM_HandleTypeDef timer1Init, timer2Init;
+
 typedef struct {
 
 	uint8_t modeID;
@@ -36,9 +47,13 @@ typedef struct {
 	void (*deinit)(void);
 	void (*run)(void);
 	void (*userInput)(char);
+	void (*timer1Handler)(void);
+	void (*timer2Handler)(void);
 
 } ModeFunctions;
 
 ModeFunctions currentModeFunctions;
+
+
 
 #endif /* STRUCTURES_H_ */

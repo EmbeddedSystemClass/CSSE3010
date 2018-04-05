@@ -33,48 +33,64 @@ ModeFunctions pantiltTerminalModeFunctions = {.modeID = 0x01,
 		.init = &pantilt_terminal_init,
 		.deinit = &pantilt_terminal_deinit,
 		.run = &pantilt_terminal_run,
-		.userInput = &pantilt_terminal_user_input};
+		.userInput = &pantilt_terminal_user_input,
+		.timer1Handler = &pantilt_terminal_timer1_handler,
+		.timer2Handler = &pantilt_terminal_timer2_handler};
 
 ModeFunctions pantiltJoystickModeFunctions = {.modeID = 0x02,
 		.init = &pantilt_joystick_init,
 		.deinit = &pantilt_joystick_deinit,
 		.run = &pantilt_joystick_run,
-		.userInput = &pantilt_joystick_user_input};
+		.userInput = &pantilt_joystick_user_input,
+		.timer1Handler = &pantilt_joystick_timer1_handler,
+		.timer2Handler = &pantilt_joystick_timer2_handler};
 
 ModeFunctions encodeDecodeModeFunctions = {.modeID = 0x03,
 		.init = &encode_decode_init,
 		.deinit = &encode_decode_deinit,
 		.run = &encode_decode_run,
-		.userInput = &encode_decode_user_input};
+		.userInput = &encode_decode_user_input,
+		.timer1Handler = &encode_decode_timer1_handler,
+		.timer2Handler = &encode_decode_timer2_handler};
 
 ModeFunctions irDuplexModeFunctions = {.modeID = 0x04,
 		.init = &ir_duplex_init,
 		.deinit = &ir_duplex_deinit,
 		.run = &ir_duplex_run,
-		.userInput = &ir_duplex_user_input};
+		.userInput = &ir_duplex_user_input,
+		.timer1Handler = &ir_duplex_timer1_handler,
+		.timer2Handler = &ir_duplex_timer2_handler};
 
 ModeFunctions hammingEncodeDecodeModeFunctions = {.modeID = 0x05,
 		.init = &hamming_encode_decode_init,
 		.deinit = &hamming_encode_decode_deinit,
 		.run = &hamming_encode_decode_run,
-		.userInput = &hamming_encode_decode_user_input};
+		.userInput = &hamming_encode_decode_user_input,
+		.timer1Handler = &hamming_encode_decode_timer1_handler,
+		.timer2Handler = &hamming_encode_decode_timer2_handler};
 
 ModeFunctions radioDuplexModeFunctions = {.modeID = 0x06,
 		.init = &radio_duplex_init,
 		.deinit = &radio_duplex_deinit,
 		.run = &radio_duplex_run,
-		.userInput = &radio_duplex_user_input};
+		.userInput = &radio_duplex_user_input,
+		.timer1Handler = &radio_duplex_timer1_handler,
+		.timer2Handler = &radio_duplex_timer2_handler};
 
 void idle_init(void);
 void idle_deinit(void);
 void idle_run(void);
 void idle_user_input(char input);
+void idle_timer1_handler(void);
+void idle_timer2_handler(void);
 
 ModeFunctions idleModeFunctions = {.modeID = 0x00,
 			.init = &idle_init,
 			.deinit = &idle_deinit,
 			.run = &idle_run,
-			.userInput = &idle_user_input};
+			.userInput = &idle_user_input,
+			.timer1Handler = &idle_timer1_handler,
+			.timer2Handler = &idle_timer2_handler};
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -154,6 +170,9 @@ void idle_user_input(char input) {
 	(*currentModeFunctions.init)();
 }
 
+void idle_timer1_handler(void){}
+
+void idle_timer2_handler(void){}
 //////////////////////////////////////END IDLE MODE////////////////////////////
 
 void update_heartbeat(void) {
@@ -197,3 +216,24 @@ void main(void) {
 		HAL_Delay(100);
 	}
 }
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	if(htim->Instance == TIMER1) {
+		(*currentModeFunctions.timer1Handler)();
+	} else if (htim->Instance == TIMER2) {
+		(*currentModeFunctions.timer2Handler)();
+	}
+}
+
+void TIMER1_HANDLER(void) {
+	HAL_TIM_IRQHandler(&timer1Init);
+}
+
+void TIMER2_HANDLER(void) {
+	HAL_TIM_IRQHandler(&timer2Init);
+}
+
+
+
+
+

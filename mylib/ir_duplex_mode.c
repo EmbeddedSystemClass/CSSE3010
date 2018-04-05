@@ -8,10 +8,10 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "structures.h"
 #include "ir_duplex_mode.h"
 #include "s4435360_hal_ir.h"
 #include "s4435360_hal_manchester.h"
-#include "debug_printf.h"
 
 #define TRANSMIT_HEADER_BITS		0b0101000000000000000010
 
@@ -21,7 +21,6 @@ char* stringToTransmit;
 int transmitBit = 21;
 char transmitChar;
 int transmitCharIndex;
-TIM_HandleTypeDef irTimInit;
 
 
 /**
@@ -41,7 +40,7 @@ int send_char(char input) {
 	bitsToTransmit = TRANSMIT_HEADER_BITS | ((uint32_t)(s4435360_hal_manchester_byte_encoder(input)) << 2);
 	transmitBit = 21;
 	currentlyTransmitting = 1;
-	HAL_TIM_Base_Start_IT(&irTimInit);
+	HAL_TIM_Base_Start_IT(&timer1Init);
 	transmitChar = input;
 	return 1;
 }
@@ -60,24 +59,26 @@ void send_string(char* string) {
   * @retval None
   */
 void ir_duplex_init(void) {
-	__TIM4_CLK_ENABLE();
+	__TIMER1_CLK_ENABLE();
 
 	/* TIM Base configuration */
-	irTimInit.Instance = TIM4;
-	irTimInit.Init.Period = 16000; //1Hz interrupt frequency
-	irTimInit.Init.Prescaler = (uint16_t) ((SystemCoreClock / 2) / 500) - 1;
-	irTimInit.Init.ClockDivision = 0;
-	irTimInit.Init.RepetitionCounter = 0;
-	irTimInit.Init.CounterMode = TIM_COUNTERMODE_UP;
+	timer1Init.Instance = TIMER1;
+	timer1Init.Init.Period = 50000/100; //1Hz interrupt frequency
+	timer1Init.Init.Prescaler = (uint16_t) ((SystemCoreClock / 2) / 50000) - 1;
+	timer1Init.Init.ClockDivision = 0;
+	timer1Init.Init.RepetitionCounter = 0;
+	timer1Init.Init.CounterMode = TIM_COUNTERMODE_UP;
 
 	/* Initialise Timer */
-	HAL_TIM_Base_Init(&irTimInit);
-	HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0); //TIM8_BRK_TIM12_IRQn
-	HAL_NVIC_EnableIRQ(TIM4_IRQn);
+	HAL_TIM_Base_Init(&timer1Init);
+	HAL_NVIC_SetPriority(TIMER1_IRQ, 10, 0);
+	HAL_NVIC_EnableIRQ(TIMER1_IRQ);
 }
 
-void TIM4_IRQHandler(void) {
+void ir_duplex_timer1_handler(void) {
+	debug_printf("Inside interrupt\r\n");
 	if(bitsToTransmit & (1 << transmitBit)) {
+		debug_printf("Should be setting\r\n");
 		s4435360_hal_ir_datamodulation_set();
 	} else {
 		s4435360_hal_ir_datamodulation_clr();
@@ -86,7 +87,7 @@ void TIM4_IRQHandler(void) {
 	if(!transmitBit) {
 		s4435360_hal_ir_datamodulation_clr();
 		s4435360_hal_ir_carrier_off();
-		HAL_TIM_Base_Stop_IT(&irTimInit);
+		HAL_TIM_Base_Stop_IT(&timer1Init);
 		currentlyTransmitting = 0;
 		debug_printf("Sent from IR: %c\r\n", transmitChar);
 		transmitCharIndex++;
@@ -106,7 +107,7 @@ void TIM4_IRQHandler(void) {
   */
 void ir_duplex_deinit(void) {
 	s4435360_hal_ir_datamodulation_clr();
-	HAL_TIM_Base_Stop_IT(&irTimInit);
+	HAL_TIM_Base_Stop_IT(&timer1Init);
 	s4435360_hal_ir_carrier_off();
 }
 
@@ -125,6 +126,9 @@ void ir_duplex_run(void) {
   * @retval None
   */
 void ir_duplex_user_input(char input) {
+	debug_printf("%c\r\n", input);
 	char* string = "abc";
 	send_string(string);
 }
+
+void ir_duplex_timer2_handler(void){}
