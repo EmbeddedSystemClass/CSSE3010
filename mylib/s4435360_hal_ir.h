@@ -29,9 +29,9 @@
 #define CARRIER_TIMER_HANDLER	carrierTimInit //Timer handler for carrier wave timer
 
 /* Modulation signal parameters */
-#define MODULATION_PORT		BRD_D36_GPIO_PORT //Port to output modulation signal
-#define MODULATION_PIN		BRD_D36_PIN //Pin to output modulation signal
-#define __MODULATION_CLK_ENABLE()	__BRD_D36_GPIO_CLK() //Clock enable function for modulation signal output pin
+#define MODULATION_PORT		BRD_D37_GPIO_PORT //Port to output modulation signal
+#define MODULATION_PIN		BRD_D37_PIN //Pin to output modulation signal
+#define __MODULATION_CLK_ENABLE()	__BRD_D37_GPIO_CLK() //Clock enable function for modulation signal output pin
 
 /* Input capture parameters */
 #define __INPUT_CAPTURE_CLK_ENABLE() 	__TIM2_CLK_ENABLE()

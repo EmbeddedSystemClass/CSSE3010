@@ -23,7 +23,7 @@
 int s4435360_radio_fsmcurrentstate;
 int s4435360_radio_rxstatus, s4435360_radio_txstatus;
 unsigned char s4435360_rx_buffer[32];
-unsigned char s4435360_tx_buffer[16];
+unsigned char s4435360_tx_buffer[32];
 
 /* Function prototypes */
 void s4435360_radio_init(void);

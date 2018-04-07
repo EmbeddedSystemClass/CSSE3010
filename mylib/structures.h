@@ -33,6 +33,7 @@
 #define TIMER2						TIM7
 #define TIMER1_IRQ					TIM5_IRQn
 #define TIMER2_IRQ					TIM7_IRQn
+#define TIMER1_AF					GPIO_AF2_TIM5
 #define __TIMER1_CLK_ENABLE() 		__TIM5_CLK_ENABLE()
 #define __TIMER2_CLK_ENABLE()		__TIM7_CLK_ENABLE()
 #define TIMER1_HANDLER				TIM5_IRQHandler

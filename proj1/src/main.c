@@ -155,8 +155,9 @@ void idle_user_input(char input) {
 			debug_printf("3 P/T Joystick\r\n");
 			debug_printf("4 Encode/Decode\r\n");
 			debug_printf("5 IR Duplex\r\n");
-			debug_printf("6 Radio Duplex\r\n");
-			debug_printf("7 Integration\r\n");
+			debug_printf("6 Hamming Encode/Decode\r\n");
+			debug_printf("7 Radio Duplex\r\n");
+			debug_printf("8 Integration\r\n");
 			debug_printf("\r\n");
 			return;
 		default:
@@ -187,13 +188,14 @@ void update_heartbeat(void) {
 
 void main(void) {
 
-	BRD_LEDInit();
 	BRD_init();
+	BRD_LEDInit();
 	s4435360_hal_ir_init();
 	s4435360_hal_joystick_init();
 	s4435360_lightbar_init();
 	s4435360_hal_pantilt_init();
-	//s4435360_hal_radio_init();
+	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+	s4435360_radio_init(); //CHECK PB10, IR TX and radio SCK both using same pin - can't init
 
 	currentModeFunctions = idleModeFunctions;
 	char userInput;
@@ -203,6 +205,7 @@ void main(void) {
 		userInput = debug_getc();
 
 		if(userInput) {
+			debug_printf("%c", userInput);
 			if(userInput == ESCAPE_CHAR) {
 				idle_user_input('1');
 			} else {

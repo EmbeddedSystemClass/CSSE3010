@@ -31,9 +31,7 @@
  * @retval None
  */
 void s4435360_radio_init(void) {
-
 	radio_fsm_init();
-
 	/* Initialise flags to 0 */
 	s4435360_radio_rxstatus = 0;
 	s4435360_radio_txstatus = 0;
@@ -210,9 +208,9 @@ void s4435360_radio_sendpacket(char channel, unsigned char* addr, unsigned char*
 	s4435360_radio_setchan(channel);
 	s4435360_radio_settxaddress(addr);
 
-	memcpy(s4435360_tx_buffer, txpacket, 16);
+	//memcpy(s4435360_tx_buffer, txpacket, 32);
 	radio_fsm_setstate(RADIO_FSM_TX_STATE);
-	radio_fsm_write(s4435360_tx_buffer);
+	radio_fsm_write(txpacket);
 
 }
 

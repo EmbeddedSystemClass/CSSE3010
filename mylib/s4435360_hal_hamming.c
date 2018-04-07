@@ -174,7 +174,6 @@ uint8_t hamming_hbyte_decoder(uint8_t in) {
   * @retval encoded two bytes of data
   */
 uint16_t hamming_byte_encoder(uint8_t input) {
-	debug_printf("%c\r\n", input);
 	return hamming_hbyte_encoder(input & 0xF) |
 		(hamming_hbyte_encoder(input >> 4) << 8);
 
@@ -197,6 +196,7 @@ HammingDecodedOutput hamming_byte_decoder(uint16_t input) {
 	if ((out1 == UNCORRECTABLE_ERROR) || (out2 == UNCORRECTABLE_ERROR)) {
 		output.uncorrectableError = 1;
 	} else {
+		output.uncorrectableError = 0;
 		output.fullDecodedOutput = (out1 << 8) | out2;
 		output.decodedOutput = ((out1 & 0x0F) << 4) | (out2 & 0x0F);
 	}
