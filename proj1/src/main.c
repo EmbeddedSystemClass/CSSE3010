@@ -104,13 +104,10 @@ void idle_deinit(void) {
 }
 
 void idle_run(void) {
-	debug_printf("Running idle mode\r\n");
 	HAL_Delay(100);
 }
 
 void idle_user_input(char input) {
-
-	debug_printf("Entering switch with input: %c\r\n", input);
 
 	ModeFunctions nextModeFunctions;
 

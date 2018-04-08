@@ -12,10 +12,14 @@
 #include "ir_duplex_mode.h"
 #include "s4435360_hal_ir.h"
 #include "s4435360_hal_manchester.h"
+#include <string.h>
 #define ENTER_CHAR					(char)(13)
 #define BACKSPACE_CHAR				(char)(8)
 #define SPACE_CHAR					(char)(32)
 #define MAXUSERCHARS				11
+#define STX_CHAR 					(char)(0x02)
+#define ETX_CHAR					(char)(0x03)
+#define ACK_CHAR					(char)(0x07)
 
 #define TRANSMIT_HEADER_BITS		0b0101000000000000000010
 #define IR_RECEIVE_PERIOD 			100
@@ -23,23 +27,27 @@
 #define START_MODE				0
 #define IR_TRANSMIT_MODE		1
 #define USER_INPUT_MODE			2
-int userCharCount;
+int irUserCharCount;
+char irUserChars[11];
 int currentIRDuplexMode = START_MODE;
 int currentlyTransmitting = 0;
 uint32_t bitsToTransmit = TRANSMIT_HEADER_BITS;
-char* stringToTransmit;
+char stringToTransmit[13];
 int transmitBit = 21;
 char transmitChar;
 int transmitCharIndex;
+
 TIM_HandleTypeDef rx_TIM_Init;
-/* Timer Input Capture Configuration Structure declaration */
 TIM_IC_InitTypeDef sICConfig;
 uint16_t PrescalerValue = 0;
 uint32_t TIMxCLKfreq = 16000000; //SystemCoreClock;
 
 /* Captured Values */
 uint32_t lastCaptureValue = 0;
-
+uint8_t captureChar = 0x00;
+int bitsReceived, receivePeriod, receivedSTX, receivedChar, receivedString, irCharsReceived;
+unsigned char rxBuffer[11];
+unsigned char rxChar;
 /**
   * @brief Instigates sending a char. Returns 1 iff
   * 		no char is currently being sent and the
@@ -63,7 +71,10 @@ int send_char(char input) {
 }
 
 void send_string(char* string) {
-	stringToTransmit = string;
+	strcpy(&stringToTransmit[1], string);
+	stringToTransmit[0] = STX_CHAR;
+	stringToTransmit[1 + irUserCharCount] = ETX_CHAR;
+	debug_printf("Sent from IR: %s\r\n", string);
 	transmitCharIndex = 0;
 	send_char(stringToTransmit[transmitCharIndex]);
 
@@ -142,6 +153,49 @@ void ir_duplex_init(void) {
 	}
 
 	lastCaptureValue = HAL_TIM_ReadCapturedValue(&rx_TIM_Init, TIM_CHANNEL_4);
+	captureChar = 0x00;
+	bitsReceived = 0;
+	receivedSTX = 0;
+	receivedChar = 0;
+	receivedString = 0;
+	irCharsReceived = 0;
+	irUserCharCount = 0;
+}
+
+void handle_received_char(char rxInput) {
+
+	switch(rxInput) {
+
+		//Begin new string
+		case STX_CHAR:
+			receivedSTX = 1;
+			irCharsReceived = 0;
+			//memset(&rxBuffer[0], 0, sizeof(unsigned char) * 11);
+			break;
+
+		//End string
+		case ETX_CHAR:
+			if(receivedSTX) {
+				receivedString = 1;
+				receivedSTX = 0;
+			}
+			break;
+
+		//Add to string
+		default:
+			if(receivedSTX) {
+				if(irCharsReceived < 11) {
+					rxBuffer[irCharsReceived++] = rxInput;
+				} else {
+					receivedString = 1;
+					receivedSTX = 0;
+				}
+			} else {
+				rxChar = rxInput;
+				receivedChar = 1;
+			}
+			break;
+	}
 }
 
 /**
@@ -153,9 +207,8 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 
 	/* Check the triggering timer channel */
 	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4) {
-
 		uint32_t currentCaptureValue = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_4);
-
+		GPIO_PinState pinState = HAL_GPIO_ReadPin(RX_INPUT_PORT, RX_INPUT_PIN);
 		uint32_t captureValueDifference;
 		if (currentCaptureValue > lastCaptureValue) {
 			captureValueDifference = (currentCaptureValue - lastCaptureValue);
@@ -163,9 +216,46 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 			captureValueDifference = ((0xFFFF - lastCaptureValue) + currentCaptureValue) + 1;
 		}
 
-		if((captureValueDifference / ((TIMxCLKfreq / PrescalerValue))) > IR_RECEIVE_PERIOD) {
+		if(!bitsReceived) {
+			/* Input capture must be initialised by rising edge */
+			if(pinState == GPIO_PIN_RESET) {
+				lastCaptureValue = currentCaptureValue;
+				bitsReceived++;
+			}
+		} else if(bitsReceived == 1) {
+			//if(pinState == GPIO_PIN_RESET) {} else {}
+			receivePeriod = captureValueDifference;
+			bitsReceived++;
+		} else if(bitsReceived == 2) {
 			lastCaptureValue = currentCaptureValue;
+			bitsReceived++;
+		} else if(bitsReceived < 11) {
+			if(captureValueDifference > 1.5 * receivePeriod) {
+				captureChar = captureChar << 1;
+				lastCaptureValue = currentCaptureValue;
 
+				if(pinState == GPIO_PIN_RESET) {
+					captureChar |= 0x01;
+					//debug_printf("1\r\n");
+				} else {
+					captureChar &= 0xFE;
+					//debug_printf("0\r\n");
+				}
+
+				bitsReceived++;
+			}
+
+		/* Stop bit */
+		} else {
+			if(captureValueDifference > 1.5 * receivePeriod) {
+				lastCaptureValue = currentCaptureValue;
+				//Check that stop bit is falling edge
+				if(pinState == GPIO_PIN_SET) {
+					handle_received_char(captureChar);
+					//debug_printf("Handled char %c\r\n", captureChar);
+				}
+				bitsReceived = 0;
+			}
 		}
 	}
 }
@@ -175,9 +265,7 @@ void TIM2_IRQHandler(void) {
 }
 
 void ir_duplex_timer1_handler(void) {
-	debug_printf("Inside interrupt\r\n");
 	if(bitsToTransmit & (1 << transmitBit)) {
-		debug_printf("Should be setting\r\n");
 		s4435360_hal_ir_datamodulation_set();
 	} else {
 		s4435360_hal_ir_datamodulation_clr();
@@ -188,7 +276,6 @@ void ir_duplex_timer1_handler(void) {
 		s4435360_hal_ir_carrier_off();
 		HAL_TIM_Base_Stop_IT(&timer1Init);
 		currentlyTransmitting = 0;
-		debug_printf("Sent from IR: %c\r\n", transmitChar);
 		transmitCharIndex++;
 
 		if(transmitCharIndex < (sizeof(stringToTransmit) / sizeof(char))) {
@@ -216,7 +303,20 @@ void ir_duplex_deinit(void) {
   * @retval None
   */
 void ir_duplex_run(void) {
+	if(receivedChar) {
+		debug_printf("Received char from IR: %c\r\n", rxChar);
+		receivedChar = 0;
+	} else if(receivedString) {
+		debug_printf("Received string from IR: ");
+		for(int i = 0; i < irCharsReceived; i++) {
+			debug_printf("%c", rxBuffer[i]);
+		}
+		debug_printf("\r\n");
 
+		//memset(&rxBuffer[0], 0, sizeof(unsigned char) * 11);
+		irCharsReceived = 0;
+		receivedString = 0;
+	}
 }
 
 /**
@@ -230,6 +330,9 @@ void ir_duplex_user_input(char input) {
 		case START_MODE:
 			if(input == 'I') {
 				currentIRDuplexMode = IR_TRANSMIT_MODE;
+			} else {
+				debug_printf("Sent from IR: %c\r\n", input);
+				send_char(input);
 			}
 			break;
 
@@ -250,30 +353,31 @@ void ir_duplex_user_input(char input) {
 
 				/* Check for user-forced packet end */
 				if(input == ENTER_CHAR) {
-					//s4435360_radio_txstatus = PACKET_READY_TO_SEND;
+					send_string(irUserChars);
+					irUserCharCount = 0;
 					currentIRDuplexMode = START_MODE;
+					memset(&irUserChars[0], 0, 11 * sizeof(char));
 					return;
 				}
 
 				/* Check for backspace */
 				if(input == BACKSPACE_CHAR) {
-					if(userCharCount) {
-						userCharCount--;
+					if(irUserCharCount) {
+						irUserCharCount--;
 					}
 
 					/* Handle general case */
 				} else {
-					//userInputs[userCharCount] = input;
-					userCharCount++;
+					irUserChars[irUserCharCount] = input;
+					irUserCharCount++;
 				}
 
 				/* Check for packet completion */
-				if(userCharCount >= MAXUSERCHARS) {
-					//s4435360_radio_txstatus = PACKET_READY_TO_SEND;
+				if(irUserCharCount >= MAXUSERCHARS) {
+					send_string(irUserChars);
+					irUserCharCount = 0;
 					currentIRDuplexMode = START_MODE;
-					return;
-				} else {
-					//s4435360_radio_txstatus = PACKET_NOT_READY_TO_SEND;
+					memset(&irUserChars[0], 0, 11 * sizeof(char));
 					return;
 				}
 			}

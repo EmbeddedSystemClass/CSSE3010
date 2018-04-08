@@ -58,6 +58,14 @@ void start_ACK_timer(void);
 int isPacketACK(unsigned char* packet);
 int isPacketERR(unsigned char* packet);
 
+/**
+ * @brief 	Forms a packet by appending the header and payloadLength
+ * 			bytes from the payload to the packet
+ * @param 	payload: the payload bytes to form the packet
+ * 			payloadLength: the number of bytes in the payload
+ * 			packet: a pointer to the packet to create
+ * @retval 	None
+ */
 void form_packet(unsigned char* payload, int payloadLength, unsigned char* packet) {
 
 	/* Add packet header */
@@ -72,6 +80,11 @@ void form_packet(unsigned char* payload, int payloadLength, unsigned char* packe
 	}
 }
 
+/**
+ * @brief Prints the last sent user packet to console
+ * @param None
+ * @retval None
+ */
 void print_sent_packet() {
 
 	debug_printf("Sent from Radio:  %c", '"');
@@ -83,6 +96,11 @@ void print_sent_packet() {
 	debug_printf("%c\r\n", '"');
 }
 
+/**
+ * @brief Prints the received decoded packet to console
+ * @param packet_buffer: the decoded packet payload
+ * @retval None
+ */
 void print_received_packet(uint8_t* packet_buffer) {
 	debug_printf("Received from Radio:  %c", '"');
 
@@ -93,14 +111,13 @@ void print_received_packet(uint8_t* packet_buffer) {
 	debug_printf("%c\r\n", '"');
 }
 
+/**
+ * @brief Initialises the radio duplex mode
+ * @param None
+ * @retval None
+ */
 void radio_duplex_init(void) {
 	currentRadioDuplexMode = START_MODE;
-	BRD_init();
-	BRD_LEDInit();		//Initialise Blue LED
-	/* Turn off LEDs */
-	BRD_LEDRedOff();
-	BRD_LEDGreenOff();
-	BRD_LEDBlueOff();
 
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
@@ -120,35 +137,51 @@ void radio_duplex_init(void) {
 	HAL_NVIC_EnableIRQ(TIMER2_IRQ);
 	HAL_TIM_Base_Start_IT(&timer2Init);
 
-	setbuf(stdout, NULL);
-
 	/* Set rx address */
 	radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
 	s4435360_radio_setrxaddress(rxAddress);
+
+	/* No received packets, no packet to transmit */
 	s4435360_radio_txstatus = 0;
 	s4435360_radio_rxstatus = 0;
 
 }
 
+/**
+ * @brief Deinitialises the radio duplex mode
+ * @param None
+ * @retval None
+ */
 void radio_duplex_deinit(void) {
 	HAL_TIM_Base_Stop_IT(&timer1Init);
 	HAL_TIM_Base_Stop_IT(&timer2Init);
 }
 
+/**
+ * @brief The run function for the radio duplex mode
+ * @param None
+ * @retval None
+ */
 void radio_duplex_run(void) {
 	/* Check for transmission */
 	if(s4435360_radio_gettxstatus()) {
 		if(radio_fsm_getstate() == RADIO_FSM_TX_STATE) {
+
+			//Send ACK
 			if(transmitACK) {
 				form_packet(ackPayload, 5, s4435360_tx_buffer);
 				s4435360_radio_txstatus = oldTxStatus;
 				transmitACK = 0;
 				debug_printf("Sent from Radio: %cA C K%c\r\n", '"', '"');
+
+			//Send ERR
 			} else if (transmitERR) {
 				form_packet(errPayload, 5, s4435360_tx_buffer);
 				s4435360_radio_txstatus = oldTxStatus;
 				transmitERR = 0;
 				debug_printf("Sent from Radio: %cE R R%c\r\n", '"', '"');
+
+			//Send packet - original or retransmission
 			} else {
 				form_packet(userInputs, 11, s4435360_tx_buffer);
 				strcpy(userInputsRetransmit, userInputs);
@@ -173,6 +206,7 @@ void radio_duplex_run(void) {
 	if(s4435360_radio_getrxstatus()) {
 		s4435360_radio_getpacket(s4435360_rx_buffer);
 
+		//Decode packet
 		unsigned char decodedOutput[11];
 		HammingDecodedOutput hammingOutput;
 		memset(&decodedOutput[0], 0, sizeof(decodedOutput));
@@ -198,15 +232,21 @@ void radio_duplex_run(void) {
 			receivedACK = 1;
 			print_received_packet(decodedOutput);
 		} else {
+			/* Check if message is an ERR */
 			if(isPacketERR(decodedOutput)) {
 				receivedACK = 1;
 				print_received_packet(decodedOutput);
 				strcpy(userInputs, userInputsRetransmit);
 				retransmitAttempts = 0;
+
+			/* Received general packet */
 			} else {
+				/* Check for uncorrectable decoding error */
 				if(receivedInvalidMessage) {
 					debug_printf("Received from Radio: 2-bit ERROR\r\n");
 					transmitERR = 1;
+
+				/* Received correct general packet */
 				} else {
 					print_received_packet(decodedOutput);
 					transmitACK = 1;
@@ -217,12 +257,21 @@ void radio_duplex_run(void) {
 			oldTxStatus = s4435360_radio_txstatus;
 			s4435360_radio_txstatus = 1;
 		}
+
+		/* Reset RX variables */
 		receivedInvalidMessage = 0;
 		s4435360_radio_rxstatus = 0;
 	}
 }
 
+/**
+ * @brief The user input function for the radio duplex mode
+ * @param input: the user input
+ * @retval None
+ */
 void radio_duplex_user_input(char input) {
+
+	//States of user input
 	switch(currentRadioDuplexMode) {
 
 		case START_MODE:
@@ -240,11 +289,11 @@ void radio_duplex_user_input(char input) {
 		case USER_INPUT_MODE:
 			// Check for valid user inputs
 			if(((input >= '0') && (input <= '9')) ||
-						((input >= 'A') && (input <= 'Z')) ||
-						((input >= 'a') && (input <= 'z')) ||
-						(input == ENTER_CHAR) ||
-						(input == SPACE_CHAR) ||
-						(input == BACKSPACE_CHAR)) {
+					((input >= 'A') && (input <= 'Z')) ||
+					((input >= 'a') && (input <= 'z')) ||
+					(input == ENTER_CHAR) ||
+					(input == SPACE_CHAR) ||
+					(input == BACKSPACE_CHAR)) {
 
 				/* Check for user-forced packet end */
 				if(input == ENTER_CHAR) {
@@ -277,11 +326,15 @@ void radio_duplex_user_input(char input) {
 					return;
 				}
 			}
-		break;
-	}
-
+			break;
+		}
 }
 
+/**
+ * @brief Configures and starts a 3s timer to time for ACK receipts
+ * @param None
+ * @retval None
+ */
 void start_ACK_timer(void) {
 	__TIMER1_CLK_ENABLE();
 
@@ -301,22 +354,38 @@ void start_ACK_timer(void) {
 	HAL_TIM_Base_Start_IT(&timer1Init);
 }
 
+/**
+ * @brief Handler for timer 2, radio fsm processing
+ * @param None
+ * @retval None
+ */
 void radio_duplex_timer2_handler(void) {
 	s4435360_radio_fsmprocessing();
 }
 
+/**
+ * @brief Handler for timer 1, ACK receipt and retransmission
+ * @param None
+ * @retval None
+ */
 void radio_duplex_timer1_handler(void) {
+	//Timer counter for 3s
 	if(timerCounter < (3 * 100)) {
 		timerCounter++;
 		return;
 	}
 
+	//3s elapsed
 	timerCounter = 0;
+
+	//If received ACK or too many retransmits, stop
 	if(receivedACK || (retransmitAttempts >= 2)) {
 		receivedACK = 0;
 		retransmitAttempts = 0;
 		HAL_TIM_Base_Stop_IT(&timer1Init);
 		s4435360_radio_txstatus = 0;
+
+	//Retransmit packet
 	} else {
 		//oldTxStatus = s4435360_radio_txstatus;
 		s4435360_radio_txstatus = 1;
@@ -326,6 +395,11 @@ void radio_duplex_timer1_handler(void) {
 
 }
 
+/**
+ * @brief Checks if packet is ACK
+ * @param packet: the packet to check
+ * @retval Returns 1 if the packet is an ACK, 0 otherwise
+ */
 int isPacketACK(unsigned char* packet) {
 	return (packet[0] == 'A') &&
 			(packet[1] == ' ') &&
@@ -334,6 +408,11 @@ int isPacketACK(unsigned char* packet) {
 			(packet[4] == 'K');
 }
 
+/**
+ * @brief Checks if packet is ERR
+ * @param packet: the packet to check
+ * @retval Returns 1 if the packet is an ERR, 0 otherwise
+ */
 int isPacketERR(unsigned char* packet) {
 	return (packet[0] == 'E') &&
 			(packet[1] == ' ') &&
