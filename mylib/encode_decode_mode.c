@@ -12,15 +12,8 @@
 #include "encode_decode_mode.h"
 #include "s4435360_hal_manchester.h"
 
-#define START_MODE				0
-#define MANCHESTER_MODE 		1
-#define ENCODE_MODE				2
-#define DECODE_MODE				3
-
 uint8_t toEncode = 0x00;
 uint16_t toDecode = 0x0000;
-int currentMode = START_MODE;
-int charsReceived = 0;
 
 /**
   * @brief Converts a char to its hex value
@@ -54,10 +47,9 @@ int is_char_valid(char input) {
   * @retval None
   */
 void encode_decode_init(void) {
+	debug_printf("Manchester encode/decode mode\r\n");
 	toEncode = 0x00;
 	toDecode = 0x0000;
-	currentMode = START_MODE;
-	charsReceived = 0;
 }
 
 /**
@@ -72,56 +64,39 @@ void encode_decode_deinit(void) {}
   * @param None
   * @retval None
   */
-void encode_decode_run(void) {
-	if((currentMode == ENCODE_MODE) && (charsReceived == 2)) {
-		debug_printf("%X\r\n", s4435360_hal_manchester_byte_encoder(toEncode));
-		toEncode = 0x00;
-	} else if((currentMode == DECODE_MODE) && (charsReceived == 4)) {
-		debug_printf("%X\r\n", s4435360_hal_manchester_byte_decoder(toDecode));
-		toDecode = 0x0000;
-	} else {
-		return;
-	}
-
-	charsReceived = 0;
-	currentMode = START_MODE;
-}
+void encode_decode_run(void) {}
 
 /**
   * @brief Handles user input for encode decode mode
   * @param input: the user input to handle
   * @retval None
   */
-void encode_decode_user_input(char input) {
-	switch(currentMode) {
-		case START_MODE:
-			if(input == 'M') {
-				currentMode = MANCHESTER_MODE;
-			}
-			break;
+void encode_decode_user_input(char* userChars, int userCharsReceived) {
+	if(userChars[0] != 'M') {
+		return;
+	}
 
-		case MANCHESTER_MODE:
-			if(input == 'E') {
-				currentMode = ENCODE_MODE;
-			} else if(input == 'D') {
-				currentMode = DECODE_MODE;
-			}
-			break;
+	/* Encode Mode */
+	if(userChars[1] == 'E') {
+		if(userCharsReceived < 4) {
+			return;
+		}
 
-		case ENCODE_MODE:
-			if(is_char_valid(input)) {
-				toEncode |= char_to_hex(input) << (4 - (4 * charsReceived));
-			}
-			charsReceived++;
-			break;
+		toEncode = (char_to_hex(userChars[2]) << 4) | (char_to_hex(userChars[3]));
+		debug_printf("%X --> %X\r\n", toEncode, s4435360_hal_manchester_byte_encoder(toEncode));
 
-		case DECODE_MODE:
-			if(is_char_valid(input)) {
-				toDecode |= char_to_hex(input) << (12 - (4 * charsReceived));
-			}
-			charsReceived++;
-			break;
+	/* Decode Mode */
+	} else if(userChars[1] == 'D') {
+		if(userCharsReceived < 6) {
+			return;
+		}
 
+		toDecode = (uint16_t)(char_to_hex(userChars[2]) << 12) |
+				(char_to_hex(userChars[3]) << 8) |
+				(char_to_hex(userChars[4]) << 4) |
+				(char_to_hex(userChars[5]) << 0);
+
+		debug_printf("%X --> %X\r\n", toDecode, s4435360_hal_manchester_byte_decoder(toDecode));
 	}
 }
 

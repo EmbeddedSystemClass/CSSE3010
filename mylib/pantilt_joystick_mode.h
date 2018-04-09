@@ -11,7 +11,7 @@
 void pantilt_joystick_init(void);
 void pantilt_joystick_deinit(void);
 void pantilt_joystick_run(void);
-void pantilt_joystick_user_input(char input);
+void pantilt_joystick_user_input(char* userChars, int userCharsReceived);
 void pantilt_joystick_timer1_handler(void);
 void pantilt_joystick_timer2_handler(void);
 

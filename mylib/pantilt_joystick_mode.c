@@ -14,7 +14,7 @@
 #include "s4435360_hal_joystick.h"
 
 void pantilt_joystick_init(void) {
-	debug_printf("Entered pantilt joystick mode\r\n");
+	debug_printf("Pantilt joystick mode\r\n");
 
 	__TIMER1_CLK_ENABLE();
 
@@ -48,7 +48,7 @@ void pantilt_joystick_run(void) {
 
 }
 
-void pantilt_joystick_user_input(char input) {
+void pantilt_joystick_user_input(char* userChars, int userCharsReceived) {
 	debug_printf("Handling input for pantilt joystick mode\r\n");
 }
 

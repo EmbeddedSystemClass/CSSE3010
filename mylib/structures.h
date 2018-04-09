@@ -29,6 +29,16 @@
 #define HEARTBEAT_SEGMENT			0
 #define MODE_ID_SEGMENT				1
 
+#define ENTER_CHAR					(char)(13)
+#define BACKSPACE_CHAR				(char)(8)
+#define SPACE_CHAR					(char)(32)
+#define STX_CHAR 					(char)(0x02)
+#define ETX_CHAR					(char)(0x03)
+#define ACK_CHAR					(char)(0x07)
+#define ESCAPE_CHAR 				(char)(27)
+#define QUESTION_CHAR				(char)(63)
+#define MAX_USER_CHARS				13
+
 #define TIMER1						TIM5
 #define TIMER2						TIM7
 #define TIMER1_IRQ					TIM5_IRQn
@@ -38,7 +48,6 @@
 #define __TIMER2_CLK_ENABLE()		__TIM7_CLK_ENABLE()
 #define TIMER1_HANDLER				TIM5_IRQHandler
 #define TIMER2_HANDLER				TIM7_IRQHandler
-
 TIM_HandleTypeDef timer1Init, timer2Init;
 
 typedef struct {
@@ -47,7 +56,7 @@ typedef struct {
 	void (*init)(void);
 	void (*deinit)(void);
 	void (*run)(void);
-	void (*userInput)(char);
+	void (*userInput)(char* userChars, int userCharsReceived);
 	void (*timer1Handler)(void);
 	void (*timer2Handler)(void);
 

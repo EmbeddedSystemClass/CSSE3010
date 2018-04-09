@@ -13,29 +13,21 @@
 #include "s4435360_hal_ir.h"
 #include "s4435360_hal_manchester.h"
 #include <string.h>
-#define ENTER_CHAR					(char)(13)
-#define BACKSPACE_CHAR				(char)(8)
-#define SPACE_CHAR					(char)(32)
-#define MAXUSERCHARS				11
-#define STX_CHAR 					(char)(0x02)
-#define ETX_CHAR					(char)(0x03)
-#define ACK_CHAR					(char)(0x07)
 
 #define TRANSMIT_HEADER_BITS		0b0101000000000000000010
 #define IR_RECEIVE_PERIOD 			100
 
-#define START_MODE				0
-#define IR_TRANSMIT_MODE		1
-#define USER_INPUT_MODE			2
-int irUserCharCount;
+char irUserCharCount = 0;
 char irUserChars[11];
-int currentIRDuplexMode = START_MODE;
+char irUserCharsRetransmit[11];
 int currentlyTransmitting = 0;
 uint32_t bitsToTransmit = TRANSMIT_HEADER_BITS;
 char stringToTransmit[13];
 int transmitBit = 21;
 char transmitChar;
 int transmitCharIndex;
+int txFlag = 0;
+int receivedIrAck, IRretransmitAttempts;
 
 TIM_HandleTypeDef rx_TIM_Init;
 TIM_IC_InitTypeDef sICConfig;
@@ -48,6 +40,7 @@ uint8_t captureChar = 0x00;
 int bitsReceived, receivePeriod, receivedSTX, receivedChar, receivedString, irCharsReceived;
 unsigned char rxBuffer[11];
 unsigned char rxChar;
+int irAckTimerCounter;
 /**
   * @brief Instigates sending a char. Returns 1 iff
   * 		no char is currently being sent and the
@@ -87,6 +80,7 @@ void send_string(char* string) {
   * @retval None
   */
 void ir_duplex_init(void) {
+	debug_printf("IR duplex mode\r\n");
 	__TIMER1_CLK_ENABLE();
 
 	/* TIM Base configuration */
@@ -159,7 +153,9 @@ void ir_duplex_init(void) {
 	receivedChar = 0;
 	receivedString = 0;
 	irCharsReceived = 0;
-	irUserCharCount = 0;
+	txFlag = 0;
+	receivedIrAck = 0;
+	IRretransmitAttempts = 0;
 }
 
 void handle_received_char(char rxInput) {
@@ -294,6 +290,7 @@ void ir_duplex_timer1_handler(void) {
 void ir_duplex_deinit(void) {
 	s4435360_hal_ir_datamodulation_clr();
 	HAL_TIM_Base_Stop_IT(&timer1Init);
+	HAL_TIM_Base_Stop_IT(&timer2Init);
 	s4435360_hal_ir_carrier_off();
 }
 
@@ -313,9 +310,22 @@ void ir_duplex_run(void) {
 		}
 		debug_printf("\r\n");
 
+		if(irCharsReceived) {
+			send_char(ACK_CHAR);
+		}
 		//memset(&rxBuffer[0], 0, sizeof(unsigned char) * 11);
 		irCharsReceived = 0;
 		receivedString = 0;
+	}
+
+	if(txFlag) {
+		send_string(irUserChars);
+		irUserCharCount = 0;
+		receivedIrAck = 0;
+		memset(&irUserChars[0], 0, 11 * sizeof(char));
+		txFlag = 0;
+
+
 	}
 }
 
@@ -324,66 +334,62 @@ void ir_duplex_run(void) {
   * @param input: the user input to handle
   * @retval None
   */
-void ir_duplex_user_input(char input) {
-	switch(currentIRDuplexMode) {
+void ir_duplex_user_input(char* userChars, int userCharsReceived) {
 
-		case START_MODE:
-			if(input == 'I') {
-				currentIRDuplexMode = IR_TRANSMIT_MODE;
-			} else {
-				debug_printf("Sent from IR: %c\r\n", input);
-				send_char(input);
-			}
-			break;
+	if((userChars[0] == 'I') && (userChars[1] == 'T') && userCharsReceived > 2){
+		txFlag = 1;
+		IRretransmitAttempts = 0;
+		irUserCharCount = userCharsReceived - 2;
+		strncpy(irUserChars, &userChars[2], userCharsReceived);
 
-		case IR_TRANSMIT_MODE:
-			if(input == 'T') {
-				currentIRDuplexMode = USER_INPUT_MODE;
-			}
-			break;
-
-		case USER_INPUT_MODE:
-			// Check for valid user inputs
-			if(((input >= '0') && (input <= '9')) ||
-					((input >= 'A') && (input <= 'Z')) ||
-					((input >= 'a') && (input <= 'z')) ||
-					(input == ENTER_CHAR) ||
-					(input == SPACE_CHAR) ||
-					(input == BACKSPACE_CHAR)) {
-
-				/* Check for user-forced packet end */
-				if(input == ENTER_CHAR) {
-					send_string(irUserChars);
-					irUserCharCount = 0;
-					currentIRDuplexMode = START_MODE;
-					memset(&irUserChars[0], 0, 11 * sizeof(char));
-					return;
-				}
-
-				/* Check for backspace */
-				if(input == BACKSPACE_CHAR) {
-					if(irUserCharCount) {
-						irUserCharCount--;
-					}
-
-					/* Handle general case */
-				} else {
-					irUserChars[irUserCharCount] = input;
-					irUserCharCount++;
-				}
-
-				/* Check for packet completion */
-				if(irUserCharCount >= MAXUSERCHARS) {
-					send_string(irUserChars);
-					irUserCharCount = 0;
-					currentIRDuplexMode = START_MODE;
-					memset(&irUserChars[0], 0, 11 * sizeof(char));
-					return;
-				}
-			}
-			break;
-		}
-
+	} else {
+		debug_printf("Sent from IR: %c\r\n", userChars[0]);
+		send_char(userChars[0]);
+	}
 }
 
-void ir_duplex_timer2_handler(void){}
+void ir_ack_init(void) {
+	__TIMER2_CLK_ENABLE();
+
+	/* TIM Base configuration */
+	timer2Init.Instance = TIMER2;
+	timer2Init.Init.Period = 50000 / 100; //10Hz timer
+	timer2Init.Init.Prescaler = (uint16_t) ((SystemCoreClock) / 50000) - 1;
+	timer2Init.Init.ClockDivision = 0;
+	timer2Init.Init.RepetitionCounter = 0;
+	timer2Init.Init.CounterMode = TIM_COUNTERMODE_UP;
+
+	/* Initialise Timer */
+	HAL_TIM_Base_Init(&timer2Init);
+	HAL_NVIC_SetPriority(TIMER2_IRQ, 10, 0);
+	HAL_NVIC_EnableIRQ(TIMER2_IRQ);
+	HAL_TIM_Base_Start_IT(&timer2Init);
+	irAckTimerCounter = 0;
+	receivedIrAck = 0;
+	IRretransmitAttempts = 0;
+}
+
+void ir_duplex_timer2_handler(void){
+	//Timer counter for 3s
+	if(irAckTimerCounter < (3 * 100)) {
+		irAckTimerCounter++;
+		return;
+	}
+
+	//3s elapsed
+	irAckTimerCounter = 0;
+
+	//If received ACK or too many retransmits, stop
+	if(receivedIrAck || (IRretransmitAttempts >= 2)) {
+		receivedIrAck = 0;
+		IRretransmitAttempts = 0;
+		HAL_TIM_Base_Stop_IT(&timer2Init);
+		txFlag = 0;
+
+	//Retransmit packet
+	} else {
+		txFlag = 1;
+		strcpy(irUserChars, irUserCharsRetransmit);
+		IRretransmitAttempts++;
+	}
+}

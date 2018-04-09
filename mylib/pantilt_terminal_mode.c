@@ -13,7 +13,7 @@
 #include "s4435360_hal_pantilt.h"
 
 void pantilt_terminal_init(void) {
-	debug_printf("Entered pantilt terminal mode\r\n");
+	debug_printf("Pantilt terminal mode\r\n");
 
 	__TIMER1_CLK_ENABLE();
 
@@ -44,26 +44,25 @@ void pantilt_terminal_run(void) {
 	HAL_Delay(100);
 }
 
-void pantilt_terminal_user_input(char input) {
-
-	switch(input) {
-		case 'A':
-			s4435360_hal_pantilt_pan_write(s4435360_hal_pantilt_pan_read() + 5);
-			break;
-		case 'D':
-			s4435360_hal_pantilt_pan_write(s4435360_hal_pantilt_pan_read() - 5);
-			break;
-		case 'W':
-			s4435360_hal_pantilt_tilt_write(s4435360_hal_pantilt_tilt_read() + 5);
-			break;
-		case 'S':
-			s4435360_hal_pantilt_tilt_write(s4435360_hal_pantilt_tilt_read() - 5);
-			break;
-		default:
-			break;
+void pantilt_terminal_user_input(char* userChars, int userCharsReceived) {
+	for(int i = 0; i < userCharsReceived; i++) {
+		switch(userChars[i]) {
+			case 'A':
+				s4435360_hal_pantilt_pan_write(s4435360_hal_pantilt_pan_read() + 5);
+				break;
+			case 'D':
+				s4435360_hal_pantilt_pan_write(s4435360_hal_pantilt_pan_read() - 5);
+				break;
+			case 'W':
+				s4435360_hal_pantilt_tilt_write(s4435360_hal_pantilt_tilt_read() + 5);
+				break;
+			case 'S':
+				s4435360_hal_pantilt_tilt_write(s4435360_hal_pantilt_tilt_read() - 5);
+				break;
+			default:
+				break;
 		}
-
-	debug_printf("Handling input for pantilt terminal mode\r\n");
+	}
 }
 
 void pantilt_terminal_timer1_handler(void) {

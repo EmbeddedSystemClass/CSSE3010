@@ -11,7 +11,7 @@
 void ir_duplex_init(void);
 void ir_duplex_deinit(void);
 void ir_duplex_run(void);
-void ir_duplex_user_input(char input);
+void ir_duplex_user_input(char* userChars, int userCharsReceived);
 void ir_duplex_timer1_handler(void);
 void ir_duplex_timer2_handler(void);
 

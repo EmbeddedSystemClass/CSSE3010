@@ -12,15 +12,8 @@
 #include "hamming_encode_decode_mode.h"
 #include "s4435360_hal_hamming.h"
 
-#define START_MODE				0
-#define HAMMING_MODE	 		1
-#define ENCODE_MODE				2
-#define DECODE_MODE				3
-
 uint8_t toHammingEncode = 0x00;
 uint16_t toHammingDecode = 0x0000;
-int currentHammingMode = START_MODE;
-int hammingCharsReceived = 0;
 
 /**
   * @brief Converts a char to its hex value
@@ -54,10 +47,9 @@ int is_hamming_char_valid(char input) {
   * @retval None
   */
 void hamming_encode_decode_init(void) {
+	debug_printf("Hamming encode/decode mode\r\n");
 	toHammingEncode = 0x00;
 	toHammingDecode = 0x0000;
-	currentHammingMode = START_MODE;
-	hammingCharsReceived = 0;
 }
 
 /**
@@ -72,67 +64,47 @@ void hamming_encode_decode_deinit(void) {}
   * @param None
   * @retval None
   */
-void hamming_encode_decode_run(void) {
-	if((currentHammingMode == ENCODE_MODE) && (hammingCharsReceived == 2)) {
-		debug_printf("%X\r\n", hamming_byte_encoder(toHammingEncode));
-		toHammingEncode = 0x00;
-	} else if((currentHammingMode == DECODE_MODE) && (hammingCharsReceived == 4)) {
-		HammingDecodedOutput output = hamming_byte_decoder(toHammingDecode);
-
-		if(output.uncorrectableError) {
-			debug_printf("2-bit ERROR\r\n");
-		} else {
-			debug_printf("%X (Full: %X ErrMask: %d)\r\n",
-					output.decodedOutput,
-					output.fullDecodedOutput,
-					output.errorMask);
-		}
-
-
-		toHammingDecode = 0x0000;
-	} else {
-		return;
-	}
-
-	hammingCharsReceived = 0;
-	currentHammingMode = START_MODE;
-}
+void hamming_encode_decode_run(void) {}
 
 /**
   * @brief Handles user input for encode decode mode
   * @param input: the user input to handle
   * @retval None
   */
-void hamming_encode_decode_user_input(char input) {
-	switch(currentHammingMode) {
-		case START_MODE:
-			if(input == 'H') {
-				currentHammingMode = HAMMING_MODE;
-			}
-			break;
+void hamming_encode_decode_user_input(char* userChars, int userCharsReceived) {
+	if(userChars[0] != 'H') {
+		return;
+	}
 
-		case HAMMING_MODE:
-			if(input == 'E') {
-				currentHammingMode = ENCODE_MODE;
-			} else if(input == 'D') {
-				currentHammingMode = DECODE_MODE;
-			}
-			break;
+	/* Encode Mode */
+	if(userChars[1] == 'E') {
+		if(userCharsReceived < 4) {
+			return;
+		}
 
-		case ENCODE_MODE:
-			if(is_hamming_char_valid(input)) {
-				toHammingEncode |= hamming_char_to_hex(input) << (4 - (4 * hammingCharsReceived));
-			}
-			hammingCharsReceived++;
-			break;
+		toHammingEncode = (char_to_hex(userChars[2]) << 4) | (char_to_hex(userChars[3]));
+		debug_printf("%X\r\n", hamming_byte_encoder(toHammingEncode));
 
-		case DECODE_MODE:
-			if(is_hamming_char_valid(input)) {
-				toHammingDecode |= hamming_char_to_hex(input) << (12 - (4 * hammingCharsReceived));
-			}
-			hammingCharsReceived++;
-			break;
+	/* Decode Mode */
+	} else if(userChars[1] == 'D') {
+		if(userCharsReceived < 6) {
+			return;
+		}
 
+		toHammingDecode = (char_to_hex(userChars[2]) << 12) |
+				(char_to_hex(userChars[3]) << 8) |
+				(char_to_hex(userChars[4]) << 4) |
+				(char_to_hex(userChars[5]) << 0);
+
+		HammingDecodedOutput output = hamming_byte_decoder(toHammingDecode);
+		if(output.uncorrectableError) {
+			debug_printf("2-bit ERROR\r\n");
+		} else {
+			debug_printf("%X (Full: %X ErrMask: %04X)\r\n",
+					output.decodedOutput,
+					output.fullDecodedOutput,
+					output.errorMask);
+		}
 	}
 }
 

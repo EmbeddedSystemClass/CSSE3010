@@ -14,6 +14,7 @@
 #include "s4435360_hal_pantilt.h"
 #include "s4435360_hal_radio.h"
 #include "s4435360_hal_joystick.h"
+#include "idle_mode.h"
 #include "pantilt_terminal_mode.h"
 #include "pantilt_joystick_mode.h"
 #include "encode_decode_mode.h"
@@ -23,11 +24,22 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
-#define ESCAPE_CHAR 			(char)(27)
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 int heartbeatCounter = 0;
 uint8_t lightbarValue = 0x00;
+char userChars[13];
+int userCharsReceived = 0;
+int passCharsToMode = 0;
+
+
+ModeFunctions idleModeFunctions = {.modeID = 0x00,
+			.init = &idle_init,
+			.deinit = &idle_deinit,
+			.run = &idle_run,
+			.userInput = &idle_user_input,
+			.timer1Handler = &idle_timer1_handler,
+			.timer2Handler = &idle_timer2_handler};
 
 ModeFunctions pantiltTerminalModeFunctions = {.modeID = 0x01,
 		.init = &pantilt_terminal_init,
@@ -77,41 +89,28 @@ ModeFunctions radioDuplexModeFunctions = {.modeID = 0x06,
 		.timer1Handler = &radio_duplex_timer1_handler,
 		.timer2Handler = &radio_duplex_timer2_handler};
 
-void idle_init(void);
-void idle_deinit(void);
-void idle_run(void);
-void idle_user_input(char input);
-void idle_timer1_handler(void);
-void idle_timer2_handler(void);
 
-ModeFunctions idleModeFunctions = {.modeID = 0x00,
-			.init = &idle_init,
-			.deinit = &idle_deinit,
-			.run = &idle_run,
-			.userInput = &idle_user_input,
-			.timer1Handler = &idle_timer1_handler,
-			.timer2Handler = &idle_timer2_handler};
 
 /* Private function prototypes -----------------------------------------------*/
 
-///////////////////////////////IDLE_MODE////////////////////////////////////////
-void idle_init(void) {
-	debug_printf("Entered idle mode\r\n");
+void print_help_information(void) {
+	debug_printf("CSSE3010 Project 1\r\n");
+	debug_printf("1 Idle\r\n");
+	debug_printf("2 P/T Terminal\r\n");
+	debug_printf("3 P/T Joystick\r\n");
+	debug_printf("4 Encode/Decode\r\n");
+	debug_printf("5 IR Duplex\r\n");
+	debug_printf("6 Hamming Encode/Decode\r\n");
+	debug_printf("7 Radio Duplex\r\n");
+	debug_printf("8 Integration\r\n");
+	debug_printf("\r\n");
 }
 
-void idle_deinit(void) {
-	debug_printf("Exiting idle mode\r\n");
-}
-
-void idle_run(void) {
-	HAL_Delay(100);
-}
-
-void idle_user_input(char input) {
+void change_mode(char mode) {
 
 	ModeFunctions nextModeFunctions;
 
-	switch(input) {
+	switch(mode) {
 
 		case IDLE_CHAR:
 			nextModeFunctions = idleModeFunctions;
@@ -144,19 +143,6 @@ void idle_user_input(char input) {
 		case INTEGRATION_CHAR:
 			nextModeFunctions = idleModeFunctions;
 			break;
-
-		case HELP_CHAR:
-			debug_printf("CSSE3010 Project 1\r\n");
-			debug_printf("1 Idle\r\n");
-			debug_printf("2 P/T Terminal\r\n");
-			debug_printf("3 P/T Joystick\r\n");
-			debug_printf("4 Encode/Decode\r\n");
-			debug_printf("5 IR Duplex\r\n");
-			debug_printf("6 Hamming Encode/Decode\r\n");
-			debug_printf("7 Radio Duplex\r\n");
-			debug_printf("8 Integration\r\n");
-			debug_printf("\r\n");
-			return;
 		default:
 			return;
 	}
@@ -167,11 +153,6 @@ void idle_user_input(char input) {
 	s4435360_lightbar_write(lightbarValue);
 	(*currentModeFunctions.init)();
 }
-
-void idle_timer1_handler(void){}
-
-void idle_timer2_handler(void){}
-//////////////////////////////////////END IDLE MODE////////////////////////////
 
 void update_heartbeat(void) {
 	if(heartbeatCounter >= HEARTBEAT_PERIOD) {
@@ -192,7 +173,7 @@ void main(void) {
 	s4435360_lightbar_init();
 	s4435360_hal_pantilt_init();
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-	s4435360_radio_init(); //CHECK PB10, IR TX and radio SCK both using same pin - can't init
+	s4435360_radio_init();
 
 	currentModeFunctions = idleModeFunctions;
 	char userInput;
@@ -203,11 +184,48 @@ void main(void) {
 
 		if(userInput) {
 			debug_printf("%c", userInput);
-			if(userInput == ESCAPE_CHAR) {
-				idle_user_input('1');
-			} else {
-				(*currentModeFunctions.userInput)(userInput);
+
+			switch(userInput) {
+				case ENTER_CHAR:
+					passCharsToMode = 1;
+					debug_printf("\r");
+					break;
+
+				case BACKSPACE_CHAR:
+					if(userCharsReceived) {
+						userCharsReceived--;
+					}
+					break;
+
+				case QUESTION_CHAR:
+					print_help_information();
+					break;
+
+				default:
+					if(((userInput >= '0') && (userInput <= '9')) ||
+										((userInput >= 'A') && (userInput <= 'Z')) ||
+										((userInput >= 'a') && (userInput <= 'z')) ||
+										(userInput == SPACE_CHAR)) {
+							userChars[userCharsReceived] = userInput;
+							userCharsReceived++;
+					}
+
+					if(userCharsReceived >= MAX_USER_CHARS) {
+						passCharsToMode = 1;
+					}
+					break;
 			}
+		}
+
+
+		if(passCharsToMode) {
+			if((userChars[0] >= '0') && (userChars[0] <= '9')) {
+				change_mode(userChars[0]);
+			} else {
+				(*currentModeFunctions.userInput)(userChars, userCharsReceived);
+			}
+			userCharsReceived = 0;
+			passCharsToMode = 0;
 		}
 
 		(*currentModeFunctions.run)();

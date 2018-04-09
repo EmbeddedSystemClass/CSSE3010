@@ -20,32 +20,24 @@
 /* Private define ------------------------------------------------------------*/
 #define TIMER_FREQUENCY 			50000
 #define INTERRUPT_FREQUENCY 		10
-#define ENTER_CHAR					(char)(13)
-#define BACKSPACE_CHAR				(char)(8)
-#define SPACE_CHAR					(char)(32)
-#define MAXUSERCHARS				11
 #define PAYLOAD_STARTING_INDEX		10
 #define PACKET_READY_TO_SEND		1
 #define PACKET_NOT_READY_TO_SEND	0
 
-#define START_MODE				0
-#define RADIO_TRANSMIT_MODE		1
-#define USER_INPUT_MODE			2
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-int currentRadioDuplexMode = START_MODE;
 unsigned char txAddress[5] = {0x52, 0x33, 0x22, 0x11, 0x00};
 unsigned char rxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
 unsigned char channel = 52;
-int userCharCount = 0;
+int radioUserCharCount = 0;
 unsigned char packetHeader[10] = {0xA1,					//Packet type
 		0x52, 0x33, 0x22, 0x11,					//Destination address
 		0x07, 0x36, 0x35, 0x44,  				//Source address
 		0x00};									//Blank
 unsigned char ackPayload[5] = "A C K";
 unsigned char errPayload[5] = "E R R";
-unsigned char userInputs[11];
-unsigned char userInputsRetransmit[11];
+unsigned char radioUserChars[11];
+unsigned char radioUserCharsRetransmit[11];
 int receivedInvalidMessage = 0;
 int receivedACK = 0;
 int retransmitAttempts = 0;
@@ -90,7 +82,7 @@ void print_sent_packet() {
 	debug_printf("Sent from Radio:  %c", '"');
 
 	for(int i = 0; i < 11; i++) {
-		debug_printf("%c", userInputs[i]);
+		debug_printf("%c", radioUserChars[i]);
 	}
 
 	debug_printf("%c\r\n", '"');
@@ -117,8 +109,8 @@ void print_received_packet(uint8_t* packet_buffer) {
  * @retval None
  */
 void radio_duplex_init(void) {
-	currentRadioDuplexMode = START_MODE;
 
+	debug_printf("Radio duplex mode\r\n");
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
 	__TIMER2_CLK_ENABLE();
@@ -183,14 +175,14 @@ void radio_duplex_run(void) {
 
 			//Send packet - original or retransmission
 			} else {
-				form_packet(userInputs, 11, s4435360_tx_buffer);
-				strcpy(userInputsRetransmit, userInputs);
+				form_packet(radioUserChars, 11, s4435360_tx_buffer);
+				strcpy(radioUserCharsRetransmit, radioUserChars);
 				print_sent_packet();
 
 				/* Reset packet */
 				receivedACK = 0;
 				s4435360_radio_txstatus = 0;
-				userCharCount = 0;
+				radioUserCharCount = 0;
 
 				start_ACK_timer();
 
@@ -236,7 +228,7 @@ void radio_duplex_run(void) {
 			if(isPacketERR(decodedOutput)) {
 				receivedACK = 1;
 				print_received_packet(decodedOutput);
-				strcpy(userInputs, userInputsRetransmit);
+				strcpy(radioUserChars, radioUserCharsRetransmit);
 				retransmitAttempts = 0;
 
 			/* Received general packet */
@@ -269,65 +261,14 @@ void radio_duplex_run(void) {
  * @param input: the user input
  * @retval None
  */
-void radio_duplex_user_input(char input) {
-
-	//States of user input
-	switch(currentRadioDuplexMode) {
-
-		case START_MODE:
-			if(input == 'R') {
-				currentRadioDuplexMode = RADIO_TRANSMIT_MODE;
-			}
-			break;
-
-		case RADIO_TRANSMIT_MODE:
-			if(input == 'T') {
-				currentRadioDuplexMode = USER_INPUT_MODE;
-			}
-			break;
-
-		case USER_INPUT_MODE:
-			// Check for valid user inputs
-			if(((input >= '0') && (input <= '9')) ||
-					((input >= 'A') && (input <= 'Z')) ||
-					((input >= 'a') && (input <= 'z')) ||
-					(input == ENTER_CHAR) ||
-					(input == SPACE_CHAR) ||
-					(input == BACKSPACE_CHAR)) {
-
-				/* Check for user-forced packet end */
-				if(input == ENTER_CHAR) {
-					s4435360_radio_txstatus = PACKET_READY_TO_SEND;
-					currentRadioDuplexMode = START_MODE;
-					retransmitAttempts = 0;
-					return;
-				}
-
-				/* Check for backspace */
-				if(input == BACKSPACE_CHAR) {
-					if(userCharCount) {
-						userCharCount--;
-					}
-
-					/* Handle general case */
-				} else {
-					userInputs[userCharCount] = input;
-					userCharCount++;
-				}
-
-				/* Check for packet completion */
-				if(userCharCount >= MAXUSERCHARS) {
-					s4435360_radio_txstatus = PACKET_READY_TO_SEND;
-					currentRadioDuplexMode = START_MODE;
-					retransmitAttempts = 0;
-					return;
-				} else {
-					s4435360_radio_txstatus = PACKET_NOT_READY_TO_SEND;
-					return;
-				}
-			}
-			break;
-		}
+void radio_duplex_user_input(char* userChars, int userCharsReceived) {
+	debug_printf("String: '%s', num %d\r\n", userChars, userCharsReceived);
+	if((userChars[0] == 'R') && (userChars[1] == 'T') && userCharsReceived > 2) {
+		s4435360_radio_txstatus = PACKET_READY_TO_SEND;
+		retransmitAttempts = 0;
+		radioUserCharCount = userCharsReceived - 2;
+		strncpy(radioUserChars, &userChars[2], userCharsReceived);
+	}
 }
 
 /**
@@ -389,7 +330,7 @@ void radio_duplex_timer1_handler(void) {
 	} else {
 		//oldTxStatus = s4435360_radio_txstatus;
 		s4435360_radio_txstatus = 1;
-		strcpy(userInputs, userInputsRetransmit);
+		strcpy(radioUserChars, radioUserCharsRetransmit);
 		retransmitAttempts++;
 	}
 

@@ -21,7 +21,7 @@ typedef struct {
 	uint8_t decodedOutput;
 	uint16_t fullDecodedOutput;
 	int uncorrectableError;
-	uint8_t errorMask;
+	uint16_t errorMask;
 
 } HammingDecodedOutput;
 

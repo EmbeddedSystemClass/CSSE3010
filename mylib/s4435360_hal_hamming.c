@@ -83,17 +83,6 @@ uint8_t hamming_hbyte_decoder(uint8_t in) {
 
 	uint8_t s0, s1, s2;
 
-	uint8_t p0 = 0;
-
-	//debug_printf("in %x\r\n", in);
-
-	for (int z = 0; z < 8; z++) {
-		p0 = p0 ^ ((in & (0x01 << z)) >> z);
-		//debug_printf("pi = %d, total = %d\r\n", ((in & (0x01 << z)) >> z), p0);
-	}
-
-	//debug_printf("Parity %d\r\n", p0);
-
 	uint8_t h0 = !!(in & 2);
 	uint8_t h1 = !!(in & 4);
 	uint8_t h2 = !!(in & 8);
@@ -103,6 +92,8 @@ uint8_t hamming_hbyte_decoder(uint8_t in) {
 	uint8_t d2 = !!(in & 64);
 	uint8_t d3 = !!(in & 128);
 
+	uint8_t p0 = h0 ^ h1 ^ h2 ^ d0 ^ d1 ^ d2 ^ d3;
+
 	s0 = h0 ^ d0 ^ d1 ^ d2;
 	s1 = h1 ^ d0 ^ d2 ^ d3;
 	s2 = h2 ^ d0 ^ d1 ^ d3;
@@ -110,20 +101,24 @@ uint8_t hamming_hbyte_decoder(uint8_t in) {
 
 	int8_t syndrome = (s0 << 0) | (s1 << 1) | (s2 <<2);
 
-	//debug_printf("Syndrome: %d\r\n", syndrome);
-
 	/* If syndrome indicates no error */
 	if(!syndrome) {
+		/* If parity correct - no errors */
+		if(p0 == !!(in & 1)) {
+			return (d3 << 7) | (d2 << 6) | (d1 << 5) | (d0 << 4) |
+				(h2 << 3) | (h1 << 2) | (h0 << 1) | (p0 << 0);
 
-		/* If even parity check indicates no error */
-		//if(!p0) {
-			return (p0 << 7) | (h0 << 6) | (h1 << 5) | (h2 << 4) |
-					(d3 << 3) | (d2 << 2) | (d1 << 1) | (d0 << 0);
-		//}
-		/* Even parity check indicates error - can't correct */
-		//} else {
-		//	return UNCORRECTABLE_ERROR;
-		//}
+		/* If parity incorrect - parity is error */
+		} else {
+			return (d3 << 7) | (d2 << 6) | (d1 << 5) | (d0 << 4) |
+				(h2 << 3) | (h1 << 2) | (h0 << 1) | ((!!(in & 1) ^ 1) << 0);
+		}
+
+	} else {
+		/* If parity is 'correct' and there is a syndrome - two bit error */
+		if(p0 == !!(in & 1)) {
+			return UNCORRECTABLE_ERROR;
+		}
 	}
 
 
@@ -158,9 +153,9 @@ uint8_t hamming_hbyte_decoder(uint8_t in) {
 	}
 
 	/* Parity bit should be odd, bit flipped */
-	if(p0) {
-		return (!p0 << 7) | (h0 << 6) | (h1 << 5) | (h2 << 4) |
-				(d3 << 3) | (d2 << 2) | (d1 << 1) | (d0 << 0);
+	if(!!(in & 1)) {
+		return (d3 << 7) | (d2 << 6) | (d1 << 5) | (d0 << 4) |
+			(h2 << 3) | (h1 << 2) | (h0 << 1) | ((p0 ^ 0x01) << 0);
 	}
 
 	return UNCORRECTABLE_ERROR;
@@ -198,7 +193,8 @@ HammingDecodedOutput hamming_byte_decoder(uint16_t input) {
 	} else {
 		output.uncorrectableError = 0;
 		output.fullDecodedOutput = (out1 << 8) | out2;
-		output.decodedOutput = ((out1 & 0x0F) << 4) | (out2 & 0x0F);
+		output.decodedOutput = (out1 & 0xF0) | ((out2 & 0xF0) >> 4);
+		output.errorMask = input ^ output.fullDecodedOutput;
 	}
 
 	return output;
