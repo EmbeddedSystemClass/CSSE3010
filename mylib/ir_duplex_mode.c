@@ -22,10 +22,7 @@ char irUserChars[11];
 char irUserCharsRetransmit[11];
 int currentlyTransmitting = 0;
 uint32_t bitsToTransmit = TRANSMIT_HEADER_BITS;
-char stringToTransmit[13];
 int transmitBit = 21;
-char transmitChar;
-int transmitCharIndex;
 int txFlag = 0;
 int receivedIrAck, IRretransmitAttempts;
 
@@ -37,10 +34,11 @@ uint32_t TIMxCLKfreq = 16000000; //SystemCoreClock;
 /* Captured Values */
 uint32_t lastCaptureValue = 0;
 uint8_t captureChar = 0x00;
-int bitsReceived, receivePeriod, receivedSTX, receivedChar, receivedString, irCharsReceived;
+int bitsReceived, receivePeriod, receivedSTX, receivedString, irCharsReceived;
 unsigned char rxBuffer[11];
 unsigned char rxChar;
 int irAckTimerCounter;
+
 /**
   * @brief Instigates sending a char. Returns 1 iff
   * 		no char is currently being sent and the
@@ -50,27 +48,25 @@ int irAckTimerCounter;
   * @retval whether the character could successfully
   * 		be transmitted
   */
-int send_char(char input) {
-	if(currentlyTransmitting) {
-		return 0;
-	}
+void send_char(char input) {
 	s4435360_hal_ir_carrier_on();
 	bitsToTransmit = TRANSMIT_HEADER_BITS | ((uint32_t)(s4435360_hal_manchester_byte_encoder(input)) << 2);
 	transmitBit = 21;
 	currentlyTransmitting = 1;
 	HAL_TIM_Base_Start_IT(&timer1Init);
-	transmitChar = input;
-	return 1;
+	while(currentlyTransmitting) {}
+	HAL_Delay(10);
 }
 
-void send_string(char* string) {
-	strcpy(&stringToTransmit[1], string);
-	stringToTransmit[0] = STX_CHAR;
-	stringToTransmit[1 + irUserCharCount] = ETX_CHAR;
-	debug_printf("Sent from IR: %s\r\n", string);
-	transmitCharIndex = 0;
-	send_char(stringToTransmit[transmitCharIndex]);
-
+void send_string(char* string, int numChars) {
+	send_char(STX_CHAR);
+	debug_printf("Sent from IR: ");
+	for(int i = 0; i < numChars; i++) {
+		send_char(string[i]);
+		debug_printf("%c", string[i]);
+	}
+	debug_printf("\r\n");
+	send_char(ETX_CHAR);
 }
 
 
@@ -81,6 +77,22 @@ void send_string(char* string) {
   */
 void ir_duplex_init(void) {
 	debug_printf("IR duplex mode\r\n");
+	ir_timer1_init();
+	ir_rx_init();
+
+	lastCaptureValue = HAL_TIM_ReadCapturedValue(&rx_TIM_Init, TIM_CHANNEL_4);
+	captureChar = 0x00;
+	bitsReceived = 0;
+	receivedSTX = 0;
+	receivedChar = 0;
+	receivedString = 0;
+	irCharsReceived = 0;
+	txFlag = 0;
+	receivedIrAck = 0;
+	IRretransmitAttempts = 0;
+}
+
+void ir_timer1_init(void) {
 	__TIMER1_CLK_ENABLE();
 
 	/* TIM Base configuration */
@@ -95,9 +107,10 @@ void ir_duplex_init(void) {
 	HAL_TIM_Base_Init(&timer1Init);
 	HAL_NVIC_SetPriority(TIMER1_IRQ, 10, 0);
 	HAL_NVIC_EnableIRQ(TIMER1_IRQ);
+}
 
 
-	/////////////////////////IR Receive Init///////////////////////////////
+void ir_rx_init(void) {
 	/* Initialise receive pin */
 	GPIO_InitTypeDef GPIO_InitStructure;
 	__TIM2_CLK_ENABLE();
@@ -145,21 +158,11 @@ void ir_duplex_init(void) {
 		debug_printf("Initialisation Error: IR Receiver Input "
 				"Capture Start Pin D35\r\n");
 	}
-
-	lastCaptureValue = HAL_TIM_ReadCapturedValue(&rx_TIM_Init, TIM_CHANNEL_4);
-	captureChar = 0x00;
-	bitsReceived = 0;
-	receivedSTX = 0;
-	receivedChar = 0;
-	receivedString = 0;
-	irCharsReceived = 0;
-	txFlag = 0;
-	receivedIrAck = 0;
-	IRretransmitAttempts = 0;
 }
 
-void handle_received_char(char rxInput) {
 
+void handle_received_char(char rxInput) {
+	//debug_printf("Received '%c'\r\n", rxInput);
 	switch(rxInput) {
 
 		//Begin new string
@@ -189,6 +192,7 @@ void handle_received_char(char rxInput) {
 			} else {
 				rxChar = rxInput;
 				receivedChar = 1;
+				//debug_printf("RECEIVED IR CHAR\r\n");
 			}
 			break;
 	}
@@ -217,6 +221,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 			if(pinState == GPIO_PIN_RESET) {
 				lastCaptureValue = currentCaptureValue;
 				bitsReceived++;
+				captureChar = 0x00;
 			}
 		} else if(bitsReceived == 1) {
 			//if(pinState == GPIO_PIN_RESET) {} else {}
@@ -251,6 +256,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 					//debug_printf("Handled char %c\r\n", captureChar);
 				}
 				bitsReceived = 0;
+				ir_rx_init();
 			}
 		}
 	}
@@ -272,11 +278,6 @@ void ir_duplex_timer1_handler(void) {
 		s4435360_hal_ir_carrier_off();
 		HAL_TIM_Base_Stop_IT(&timer1Init);
 		currentlyTransmitting = 0;
-		transmitCharIndex++;
-
-		if(transmitCharIndex < (sizeof(stringToTransmit) / sizeof(char))) {
-			send_char(stringToTransmit[transmitCharIndex]);
-		}
 	} else {
 		transmitBit--;
 	}
@@ -301,7 +302,14 @@ void ir_duplex_deinit(void) {
   */
 void ir_duplex_run(void) {
 	if(receivedChar) {
-		debug_printf("Received char from IR: %c\r\n", rxChar);
+		if(rxChar == ACK_CHAR) {
+			debug_printf("Received from IR: ACK\r\n");
+			receivedIrAck = 1;
+		} else if (((rxChar >= 'a') && (rxChar <= 'z')) ||
+				((rxChar >= 'A') && (rxChar <= 'Z')) ||
+				(rxChar == SPACE_CHAR)) {
+			debug_printf("Received char from IR: %c\r\n", rxChar);
+		}
 		receivedChar = 0;
 	} else if(receivedString) {
 		debug_printf("Received string from IR: ");
@@ -310,22 +318,21 @@ void ir_duplex_run(void) {
 		}
 		debug_printf("\r\n");
 
-		if(irCharsReceived) {
-			send_char(ACK_CHAR);
-		}
-		//memset(&rxBuffer[0], 0, sizeof(unsigned char) * 11);
+		send_char(ACK_CHAR);
+		debug_printf("Sent from IR: ACK\r\n");
+
 		irCharsReceived = 0;
 		receivedString = 0;
 	}
 
 	if(txFlag) {
-		send_string(irUserChars);
-		irUserCharCount = 0;
+		send_string(irUserChars, irUserCharCount);
+		//irUserCharCount = 0;
 		receivedIrAck = 0;
+		strcpy(irUserCharsRetransmit, irUserChars);
 		memset(&irUserChars[0], 0, 11 * sizeof(char));
 		txFlag = 0;
-
-
+		ir_ack_init();
 	}
 }
 
@@ -366,7 +373,6 @@ void ir_ack_init(void) {
 	HAL_TIM_Base_Start_IT(&timer2Init);
 	irAckTimerCounter = 0;
 	receivedIrAck = 0;
-	IRretransmitAttempts = 0;
 }
 
 void ir_duplex_timer2_handler(void){
@@ -382,7 +388,6 @@ void ir_duplex_timer2_handler(void){
 	//If received ACK or too many retransmits, stop
 	if(receivedIrAck || (IRretransmitAttempts >= 2)) {
 		receivedIrAck = 0;
-		IRretransmitAttempts = 0;
 		HAL_TIM_Base_Stop_IT(&timer2Init);
 		txFlag = 0;
 
@@ -393,3 +398,5 @@ void ir_duplex_timer2_handler(void){
 		IRretransmitAttempts++;
 	}
 }
+
+void ir_duplex_timer3_handler(void){}

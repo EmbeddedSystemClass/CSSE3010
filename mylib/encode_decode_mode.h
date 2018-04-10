@@ -14,5 +14,6 @@ void encode_decode_run(void);
 void encode_decode_user_input(char* userChars, int userCharsReceived);
 void encode_decode_timer1_handler(void);
 void encode_decode_timer2_handler(void);
+void encode_decode_timer3_handler(void);
 
 #endif

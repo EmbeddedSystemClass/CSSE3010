@@ -21,6 +21,7 @@
 #include "hamming_encode_decode_mode.h"
 #include "ir_duplex_mode.h"
 #include "radio_duplex_mode.h"
+#include "integration_duplex.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -39,7 +40,9 @@ ModeFunctions idleModeFunctions = {.modeID = 0x00,
 			.run = &idle_run,
 			.userInput = &idle_user_input,
 			.timer1Handler = &idle_timer1_handler,
-			.timer2Handler = &idle_timer2_handler};
+			.timer2Handler = &idle_timer2_handler,
+			.timer3Handler = &idle_timer3_handler
+};
 
 ModeFunctions pantiltTerminalModeFunctions = {.modeID = 0x01,
 		.init = &pantilt_terminal_init,
@@ -47,7 +50,9 @@ ModeFunctions pantiltTerminalModeFunctions = {.modeID = 0x01,
 		.run = &pantilt_terminal_run,
 		.userInput = &pantilt_terminal_user_input,
 		.timer1Handler = &pantilt_terminal_timer1_handler,
-		.timer2Handler = &pantilt_terminal_timer2_handler};
+		.timer2Handler = &pantilt_terminal_timer2_handler,
+		.timer3Handler = &pantilt_terminal_timer3_handler
+};
 
 ModeFunctions pantiltJoystickModeFunctions = {.modeID = 0x02,
 		.init = &pantilt_joystick_init,
@@ -55,7 +60,9 @@ ModeFunctions pantiltJoystickModeFunctions = {.modeID = 0x02,
 		.run = &pantilt_joystick_run,
 		.userInput = &pantilt_joystick_user_input,
 		.timer1Handler = &pantilt_joystick_timer1_handler,
-		.timer2Handler = &pantilt_joystick_timer2_handler};
+		.timer2Handler = &pantilt_joystick_timer2_handler,
+		.timer3Handler = &pantilt_joystick_timer3_handler
+};
 
 ModeFunctions encodeDecodeModeFunctions = {.modeID = 0x03,
 		.init = &encode_decode_init,
@@ -63,7 +70,8 @@ ModeFunctions encodeDecodeModeFunctions = {.modeID = 0x03,
 		.run = &encode_decode_run,
 		.userInput = &encode_decode_user_input,
 		.timer1Handler = &encode_decode_timer1_handler,
-		.timer2Handler = &encode_decode_timer2_handler};
+		.timer2Handler = &encode_decode_timer2_handler
+};
 
 ModeFunctions irDuplexModeFunctions = {.modeID = 0x04,
 		.init = &ir_duplex_init,
@@ -71,7 +79,9 @@ ModeFunctions irDuplexModeFunctions = {.modeID = 0x04,
 		.run = &ir_duplex_run,
 		.userInput = &ir_duplex_user_input,
 		.timer1Handler = &ir_duplex_timer1_handler,
-		.timer2Handler = &ir_duplex_timer2_handler};
+		.timer2Handler = &ir_duplex_timer2_handler,
+		.timer3Handler = &ir_duplex_timer3_handler
+};
 
 ModeFunctions hammingEncodeDecodeModeFunctions = {.modeID = 0x05,
 		.init = &hamming_encode_decode_init,
@@ -79,7 +89,9 @@ ModeFunctions hammingEncodeDecodeModeFunctions = {.modeID = 0x05,
 		.run = &hamming_encode_decode_run,
 		.userInput = &hamming_encode_decode_user_input,
 		.timer1Handler = &hamming_encode_decode_timer1_handler,
-		.timer2Handler = &hamming_encode_decode_timer2_handler};
+		.timer2Handler = &hamming_encode_decode_timer2_handler,
+		.timer3Handler = &hamming_encode_decode_timer3_handler
+};
 
 ModeFunctions radioDuplexModeFunctions = {.modeID = 0x06,
 		.init = &radio_duplex_init,
@@ -87,7 +99,19 @@ ModeFunctions radioDuplexModeFunctions = {.modeID = 0x06,
 		.run = &radio_duplex_run,
 		.userInput = &radio_duplex_user_input,
 		.timer1Handler = &radio_duplex_timer1_handler,
-		.timer2Handler = &radio_duplex_timer2_handler};
+		.timer2Handler = &radio_duplex_timer2_handler,
+		.timer3Handler = &radio_duplex_timer3_handler
+};
+
+ModeFunctions integrationDuplexModeFunctions = {.modeID = 0x07,
+		.init = &integration_duplex_init,
+		.deinit = &integration_duplex_deinit,
+		.run = &integration_duplex_run,
+		.userInput = &integration_duplex_user_input,
+		.timer1Handler = &integration_duplex_timer1_handler,
+		.timer2Handler = &integration_duplex_timer2_handler,
+		.timer3Handler = &integration_duplex_timer3_handler
+};
 
 
 
@@ -102,7 +126,8 @@ void print_help_information(void) {
 	debug_printf("5 IR Duplex\r\n");
 	debug_printf("6 Hamming Encode/Decode\r\n");
 	debug_printf("7 Radio Duplex\r\n");
-	debug_printf("8 Integration\r\n");
+	debug_printf("8 Integration Duplex\r\n");
+	debug_printf("9 Integration Speed\r\n");
 	debug_printf("\r\n");
 }
 
@@ -140,9 +165,14 @@ void change_mode(char mode) {
 			nextModeFunctions = radioDuplexModeFunctions;
 			break;
 
-		case INTEGRATION_CHAR:
+		case INTEGRATION_DUPLEX_CHAR:
+			nextModeFunctions = integrationDuplexModeFunctions;
+			break;
+
+		case INTEGRATION_SPEED_CHAR:
 			nextModeFunctions = idleModeFunctions;
 			break;
+
 		default:
 			return;
 	}
@@ -240,6 +270,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		(*currentModeFunctions.timer1Handler)();
 	} else if (htim->Instance == TIMER2) {
 		(*currentModeFunctions.timer2Handler)();
+	} else if (htim->Instance == TIMER3) {
+		(*currentModeFunctions.timer3Handler)();
 	}
 }
 
@@ -249,6 +281,10 @@ void TIMER1_HANDLER(void) {
 
 void TIMER2_HANDLER(void) {
 	HAL_TIM_IRQHandler(&timer2Init);
+}
+
+void TIMER3_HANDLER(void) {
+	HAL_TIM_IRQHandler(&timer3Init);
 }
 
 

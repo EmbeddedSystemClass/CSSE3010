@@ -9,34 +9,32 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "string.h"
-#include "structures.h"
-#include "radio_fsm.h"
+#include "radio_duplex_mode.h"
+
 #include "nrf24l01plus.h"
+#include "radio_fsm.h"
 #include "s4435360_hal_radio.h"
 #include "s4435360_hal_hamming.h"
 
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
 #define TIMER_FREQUENCY 			50000
 #define INTERRUPT_FREQUENCY 		10
 #define PAYLOAD_STARTING_INDEX		10
 #define PACKET_READY_TO_SEND		1
 #define PACKET_NOT_READY_TO_SEND	0
 
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
 unsigned char txAddress[5] = {0x52, 0x33, 0x22, 0x11, 0x00};
 unsigned char rxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
 unsigned char channel = 52;
-int radioUserCharCount = 0;
 unsigned char packetHeader[10] = {0xA1,					//Packet type
 		0x52, 0x33, 0x22, 0x11,					//Destination address
 		0x07, 0x36, 0x35, 0x44,  				//Source address
 		0x00};									//Blank
 unsigned char ackPayload[5] = "A C K";
 unsigned char errPayload[5] = "E R R";
+
+int radioUserCharCount = 0;
 unsigned char radioUserChars[11];
+int radioUserCharRetransmitCount = 0;
 unsigned char radioUserCharsRetransmit[11];
 int receivedInvalidMessage = 0;
 int receivedACK = 0;
@@ -45,6 +43,9 @@ int transmitACK = 0;
 int transmitERR = 0;
 int oldTxStatus;
 int timerCounter = 0;
+
+/* Private typedef -----------------------------------------------------------*/
+/* Private define ------------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 void start_ACK_timer(void);
 int isPacketACK(unsigned char* packet);
@@ -77,11 +78,11 @@ void form_packet(unsigned char* payload, int payloadLength, unsigned char* packe
  * @param None
  * @retval None
  */
-void print_sent_packet() {
+void print_sent_packet(void) {
 
 	debug_printf("Sent from Radio:  %c", '"');
 
-	for(int i = 0; i < 11; i++) {
+	for(int i = 0; i < radioUserCharCount; i++) {
 		debug_printf("%c", radioUserChars[i]);
 	}
 
@@ -177,6 +178,7 @@ void radio_duplex_run(void) {
 			} else {
 				form_packet(radioUserChars, 11, s4435360_tx_buffer);
 				strcpy(radioUserCharsRetransmit, radioUserChars);
+				radioUserCharRetransmitCount = radioUserCharCount;
 				print_sent_packet();
 
 				/* Reset packet */
@@ -229,6 +231,7 @@ void radio_duplex_run(void) {
 				receivedACK = 1;
 				print_received_packet(decodedOutput);
 				strcpy(radioUserChars, radioUserCharsRetransmit);
+				radioUserCharCount = radioUserCharRetransmitCount;
 				retransmitAttempts = 0;
 
 			/* Received general packet */
@@ -331,10 +334,13 @@ void radio_duplex_timer1_handler(void) {
 		//oldTxStatus = s4435360_radio_txstatus;
 		s4435360_radio_txstatus = 1;
 		strcpy(radioUserChars, radioUserCharsRetransmit);
+		radioUserCharCount = radioUserCharRetransmitCount;
 		retransmitAttempts++;
 	}
 
 }
+
+void radio_duplex_timer3_handler(void){}
 
 /**
  * @brief Checks if packet is ACK

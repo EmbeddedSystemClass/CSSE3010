@@ -58,6 +58,5 @@ void pantilt_joystick_timer1_handler(void) {
 			s4435360_hal_pantilt_tilt_read());
 }
 
-void pantilt_joystick_timer2_handler(void) {
-
-}
+void pantilt_joystick_timer2_handler(void) {}
+void pantilt_joystick_timer3_handler(void) {}
