@@ -14,7 +14,7 @@
 
 #include "stdint.h"
 
-#define UNCORRECTABLE_ERROR		0xFF
+#define UNCORRECTABLE_ERROR		0xFE
 
 typedef struct {
 

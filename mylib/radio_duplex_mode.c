@@ -113,6 +113,15 @@ void radio_duplex_init(void) {
 
 	debug_printf("Radio duplex mode\r\n");
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+	s4435360_radio_init();
+
+	/* Set rx address */
+	radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
+	s4435360_radio_setrxaddress(rxAddress);
+
+	/* No received packets, no packet to transmit */
+	s4435360_radio_txstatus = 0;
+	s4435360_radio_rxstatus = 0;
 
 	__TIMER2_CLK_ENABLE();
 
@@ -130,13 +139,15 @@ void radio_duplex_init(void) {
 	HAL_NVIC_EnableIRQ(TIMER2_IRQ);
 	HAL_TIM_Base_Start_IT(&timer2Init);
 
-	/* Set rx address */
-	radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
-	s4435360_radio_setrxaddress(rxAddress);
-
-	/* No received packets, no packet to transmit */
-	s4435360_radio_txstatus = 0;
-	s4435360_radio_rxstatus = 0;
+	radioUserCharCount = 0;
+	radioUserCharRetransmitCount = 0;
+	receivedInvalidMessage = 0;
+	receivedACK = 0;
+	retransmitAttempts = 0;
+	transmitACK = 0;
+	transmitERR = 0;
+	oldTxStatus = 0;
+	timerCounter = 0;
 
 }
 
@@ -156,6 +167,10 @@ void radio_duplex_deinit(void) {
  * @retval None
  */
 void radio_duplex_run(void) {
+	lightbar_seg_set(SEND_INDICATOR_SEGMENT, 0);
+	lightbar_seg_set(RECEIVE_INDICATOR_SEGMENT, 0);
+
+
 	/* Check for transmission */
 	if(s4435360_radio_gettxstatus()) {
 		if(radio_fsm_getstate() == RADIO_FSM_TX_STATE) {
@@ -192,6 +207,7 @@ void radio_duplex_run(void) {
 
 			s4435360_radio_sendpacket(channel,  txAddress, s4435360_tx_buffer);
 			memset(&s4435360_tx_buffer[0], 0, sizeof(s4435360_tx_buffer));
+			lightbar_seg_set(SEND_INDICATOR_SEGMENT, 1);
 		}
 	}
 
@@ -199,6 +215,8 @@ void radio_duplex_run(void) {
 	/* Check for received packet */
 	if(s4435360_radio_getrxstatus()) {
 		s4435360_radio_getpacket(s4435360_rx_buffer);
+
+		lightbar_seg_set(RECEIVE_INDICATOR_SEGMENT, 1);
 
 		//Decode packet
 		unsigned char decodedOutput[11];
@@ -233,6 +251,7 @@ void radio_duplex_run(void) {
 				strcpy(radioUserChars, radioUserCharsRetransmit);
 				radioUserCharCount = radioUserCharRetransmitCount;
 				retransmitAttempts = 0;
+				lightbar_seg_set(ERR_INDICATOR_SEGMENT, 1);
 
 			/* Received general packet */
 			} else {
@@ -245,6 +264,7 @@ void radio_duplex_run(void) {
 				} else {
 					print_received_packet(decodedOutput);
 					transmitACK = 1;
+					lightbar_seg_set(ERR_INDICATOR_SEGMENT, 0);
 				}
 			}
 
@@ -261,7 +281,8 @@ void radio_duplex_run(void) {
 
 /**
  * @brief The user input function for the radio duplex mode
- * @param input: the user input
+ * @param userChars: The user input from the console
+ * 		  userCharsReceived: The number of characters received
  * @retval None
  */
 void radio_duplex_user_input(char* userChars, int userCharsReceived) {
@@ -296,6 +317,9 @@ void start_ACK_timer(void) {
 	HAL_NVIC_EnableIRQ(TIMER1_IRQ);
 	//__HAL_TIM_SET_COUNTER(&timer1Init, 0);
 	HAL_TIM_Base_Start_IT(&timer1Init);
+
+	lightbar_seg_set(ACK_INDICATOR_SEGMENT, 1);
+
 }
 
 /**
@@ -328,6 +352,7 @@ void radio_duplex_timer1_handler(void) {
 		retransmitAttempts = 0;
 		HAL_TIM_Base_Stop_IT(&timer1Init);
 		s4435360_radio_txstatus = 0;
+		lightbar_seg_set(ACK_INDICATOR_SEGMENT, 0);
 
 	//Retransmit packet
 	} else {

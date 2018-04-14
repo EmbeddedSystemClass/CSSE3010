@@ -43,6 +43,7 @@
 void s4435360_lightbar_init(void);
 
 void s4435360_lightbar_write(unsigned short value);
+void lightbar_seg_set(int segment, unsigned char segment_value);
 
 #endif
 

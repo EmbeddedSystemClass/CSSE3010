@@ -18,17 +18,17 @@
 #include "pantilt_terminal_mode.h"
 #include "pantilt_joystick_mode.h"
 #include "encode_decode_mode.h"
-#include "hamming_encode_decode_mode.h"
 #include "ir_duplex_mode.h"
 #include "radio_duplex_mode.h"
 #include "integration_duplex.h"
+#include "integration_speed.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 int heartbeatCounter = 0;
-uint8_t lightbarValue = 0x00;
+int heartBeatValue = 0;
 char userChars[13];
 int userCharsReceived = 0;
 int passCharsToMode = 0;
@@ -83,17 +83,7 @@ ModeFunctions irDuplexModeFunctions = {.modeID = 0x04,
 		.timer3Handler = &ir_duplex_timer3_handler
 };
 
-ModeFunctions hammingEncodeDecodeModeFunctions = {.modeID = 0x05,
-		.init = &hamming_encode_decode_init,
-		.deinit = &hamming_encode_decode_deinit,
-		.run = &hamming_encode_decode_run,
-		.userInput = &hamming_encode_decode_user_input,
-		.timer1Handler = &hamming_encode_decode_timer1_handler,
-		.timer2Handler = &hamming_encode_decode_timer2_handler,
-		.timer3Handler = &hamming_encode_decode_timer3_handler
-};
-
-ModeFunctions radioDuplexModeFunctions = {.modeID = 0x06,
+ModeFunctions radioDuplexModeFunctions = {.modeID = 0x05,
 		.init = &radio_duplex_init,
 		.deinit = &radio_duplex_deinit,
 		.run = &radio_duplex_run,
@@ -103,7 +93,7 @@ ModeFunctions radioDuplexModeFunctions = {.modeID = 0x06,
 		.timer3Handler = &radio_duplex_timer3_handler
 };
 
-ModeFunctions integrationDuplexModeFunctions = {.modeID = 0x07,
+ModeFunctions integrationDuplexModeFunctions = {.modeID = 0x06,
 		.init = &integration_duplex_init,
 		.deinit = &integration_duplex_deinit,
 		.run = &integration_duplex_run,
@@ -113,6 +103,15 @@ ModeFunctions integrationDuplexModeFunctions = {.modeID = 0x07,
 		.timer3Handler = &integration_duplex_timer3_handler
 };
 
+ModeFunctions integrationSpeedModeFunctions = {.modeID = 0x07,
+		.init = &integration_speed_init,
+		.deinit = &integration_speed_deinit,
+		.run = &integration_speed_run,
+		.userInput = &integration_speed_user_input,
+		.timer1Handler = &integration_speed_timer1_handler,
+		.timer2Handler = &integration_speed_timer2_handler,
+		.timer3Handler = &integration_speed_timer3_handler
+};
 
 
 /* Private function prototypes -----------------------------------------------*/
@@ -124,10 +123,9 @@ void print_help_information(void) {
 	debug_printf("3 P/T Joystick\r\n");
 	debug_printf("4 Encode/Decode\r\n");
 	debug_printf("5 IR Duplex\r\n");
-	debug_printf("6 Hamming Encode/Decode\r\n");
-	debug_printf("7 Radio Duplex\r\n");
-	debug_printf("8 Integration Duplex\r\n");
-	debug_printf("9 Integration Speed\r\n");
+	debug_printf("6 Radio Duplex\r\n");
+	debug_printf("7 Integration Duplex\r\n");
+	debug_printf("8 Integration Speed\r\n");
 	debug_printf("\r\n");
 }
 
@@ -157,10 +155,6 @@ void change_mode(char mode) {
 			nextModeFunctions = irDuplexModeFunctions;
 			break;
 
-		case HAMMING_ENCODE_DECODE_CHAR:
-			nextModeFunctions = hammingEncodeDecodeModeFunctions;
-			break;
-
 		case RADIO_DUPLEX_CHAR:
 			nextModeFunctions = radioDuplexModeFunctions;
 			break;
@@ -170,7 +164,7 @@ void change_mode(char mode) {
 			break;
 
 		case INTEGRATION_SPEED_CHAR:
-			nextModeFunctions = idleModeFunctions;
+			nextModeFunctions = integrationSpeedModeFunctions;
 			break;
 
 		default:
@@ -179,15 +173,18 @@ void change_mode(char mode) {
 
 	(*currentModeFunctions.deinit)();
 	currentModeFunctions = nextModeFunctions;
-	lightbarValue &= (0xFF & (currentModeFunctions.modeID << MODE_ID_SEGMENT));
-	s4435360_lightbar_write(lightbarValue);
+
+	lightbar_seg_set(MODE_ID_SEGMENT, (currentModeFunctions.modeID & 0x01));
+	lightbar_seg_set(MODE_ID_SEGMENT + 1, (currentModeFunctions.modeID & 0x02));
+	lightbar_seg_set(MODE_ID_SEGMENT + 2, (currentModeFunctions.modeID & 0x04));
+
 	(*currentModeFunctions.init)();
 }
 
 void update_heartbeat(void) {
 	if(heartbeatCounter >= HEARTBEAT_PERIOD) {
-		lightbarValue ^= (1 << HEARTBEAT_SEGMENT);
-		s4435360_lightbar_write(lightbarValue);
+		lightbar_seg_set(HEARTBEAT_SEGMENT, heartBeatValue);
+		heartBeatValue = 1 - heartBeatValue;
 		heartbeatCounter = 0;
 	} else {
 		heartbeatCounter++;
@@ -205,7 +202,11 @@ void main(void) {
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 	s4435360_radio_init();
 
+	setbuf(stdout, NULL);
 	currentModeFunctions = idleModeFunctions;
+	s4435360_lightbar_write(0x00);
+	heartBeatValue = 0;
+
 	char userInput;
 
 	while(1) {
@@ -251,6 +252,7 @@ void main(void) {
 		if(passCharsToMode) {
 			if((userChars[0] >= '0') && (userChars[0] <= '9')) {
 				change_mode(userChars[0]);
+				userChars[0] = 0;
 			} else {
 				(*currentModeFunctions.userInput)(userChars, userCharsReceived);
 			}

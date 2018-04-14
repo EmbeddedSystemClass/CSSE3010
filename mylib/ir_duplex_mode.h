@@ -11,13 +11,18 @@
 int receivedChar;
 unsigned char rxBuffer[11];
 unsigned char rxChar;
+int receivePeriod, currentlyTransmitting;
 
+#define PERIOD_REGISTER_TIME_SCALAR 			50000
+
+void configure_transmission(uint64_t bits, int index, uint16_t irPeriod);
+void configure_receive(int length, void (*charHandler)(uint16_t));
 void send_char(char input);
 void send_string(char* string, int numChars);
 void ir_duplex_init(void);
 void ir_timer1_init(void);
 void ir_rx_init(void);
-void handle_received_char(char rxInput);
+void handle_received_char(uint16_t rxInput);
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim);
 void TIM2_IRQHandler(void);
 void ir_duplex_timer1_handler(void);

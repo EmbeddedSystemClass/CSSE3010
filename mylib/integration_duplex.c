@@ -44,7 +44,7 @@ int duplexTimerCounter = 0;
 void start_ACK_timer3(void);
 
 /**
- * @brief Initialises the radio duplex mode
+ * @brief Initialises the duplex functionality for integration challenge
  * @param None
  * @retval None
  */
@@ -89,7 +89,7 @@ void integration_duplex_init(void) {
 }
 
 /**
- * @brief Deinitialises the radio duplex mode
+ * @brief Deinitialises the duplex functionality for integration challenge
  * @param None
  * @retval None
  */
@@ -100,11 +100,13 @@ void integration_duplex_deinit(void) {
 }
 
 /**
- * @brief The run function for the radio duplex mode
+ * @brief The run function for the duplex integration challenge
  * @param None
  * @retval None
  */
 void integration_duplex_run(void) {
+
+	lightbar_seg_set(RECEIVE_INDICATOR_SEGMENT, 0);
 
 	/* Check for transmission */
 	if(s4435360_radio_gettxstatus()) {
@@ -131,12 +133,15 @@ void integration_duplex_run(void) {
 
 			s4435360_radio_sendpacket(duplexChannel,  duplexTxAddress, s4435360_tx_buffer);
 			memset(&s4435360_tx_buffer[0], 0, sizeof(s4435360_tx_buffer));
+			lightbar_seg_set(SEND_INDICATOR_SEGMENT, 1);
 		}
 	}
 
 
 	/* Check for received packet */
 	if(s4435360_radio_getrxstatus()) {
+		debug_printf("RX STATUS\r\n");
+
 		s4435360_radio_getpacket(s4435360_rx_buffer);
 
 		//Decode packet
@@ -163,21 +168,24 @@ void integration_duplex_run(void) {
 		/* Check for uncorrectable decoding error */
 		if(duplexReceivedInvalidMessage) {
 			debug_printf("Received from Radio: 2-bit ERROR\r\n");
-			/* Send IR NACK */
+			send_char(NACK_CHAR);
 			debug_printf("Sent from IR: NACK\r\n");
 
 		/* Received correct packet */
 		} else {
 			print_received_packet(decodedOutput);
-			/* Send IR ACK */
+			send_char(ACK_CHAR);
 			debug_printf("Sent from IR: ACK\r\n");
 		}
 
 		/* Reset RX variables */
 		duplexReceivedInvalidMessage = 0;
 		s4435360_radio_rxstatus = 0;
+
+		lightbar_seg_set(RECEIVE_INDICATOR_SEGMENT, 1);
 	}
 
+	/* Check for IR receive acknowledgements */
 	if(receivedChar) {
 		if(rxChar == ACK_CHAR) {
 			debug_printf("Received from IR: ACK\r\n");
@@ -196,12 +204,12 @@ void integration_duplex_run(void) {
 }
 
 /**
- * @brief The user input function for the radio duplex mode
- * @param input: the user input
+ * @brief The user input function for the integration duplex mode
+ * @param userChars: the chars received from the console
+ * 		   userCharsReceived: the number of chars received
  * @retval None
  */
 void integration_duplex_user_input(char* userChars, int userCharsReceived) {
-	//debug_printf("String: '%s', num %d\r\n", userChars, userCharsReceived);
 	if((userChars[0] == 'D') && (userChars[1] == 'T') && userCharsReceived > 2) {
 		s4435360_radio_txstatus = PACKET_READY_TO_SEND;
 		duplexRetransmitAttempts = 0;
@@ -231,6 +239,8 @@ void start_ACK_timer3(void) {
 	HAL_NVIC_SetPriority(TIMER3_IRQ, 10, 0);
 	HAL_NVIC_EnableIRQ(TIMER3_IRQ);
 	HAL_TIM_Base_Start_IT(&timer3Init);
+
+	lightbar_seg_set(ACK_INDICATOR_SEGMENT, 1);
 }
 
 /**
@@ -251,6 +261,11 @@ void integration_duplex_timer1_handler(void) {
 	ir_duplex_timer1_handler();
 }
 
+/**
+ * @brief Handler for timer 3, ACK retransmission timer
+ * @param None
+ * @retval None
+ */
 void integration_duplex_timer3_handler(void) {
 	//Timer counter for 3s
 	if(duplexTimerCounter < (3 * 100)) {
@@ -261,13 +276,14 @@ void integration_duplex_timer3_handler(void) {
 	//3s elapsed
 	duplexTimerCounter = 0;
 
-	//debug_printf("In ACK timer, ACK flag = %d\r\n", duplexReceivedACK);
 	//If received ACK or too many retransmits, stop
 	if(duplexReceivedACK || (duplexRetransmitAttempts >= 2)) {
 		duplexReceivedACK = 0;
 		duplexRetransmitAttempts = 0;
 		HAL_TIM_Base_Stop_IT(&timer3Init);
 		s4435360_radio_txstatus = 0;
+
+		lightbar_seg_set(ACK_INDICATOR_SEGMENT, 0);
 
 	//Retransmit packet
 	} else {

@@ -11,6 +11,7 @@
 #include "structures.h"
 #include "encode_decode_mode.h"
 #include "s4435360_hal_manchester.h"
+#include "s4435360_hal_hamming.h"
 
 uint8_t toEncode = 0x00;
 uint16_t toDecode = 0x0000;
@@ -68,40 +69,77 @@ void encode_decode_run(void) {}
 
 /**
   * @brief Handles user input for encode decode mode
-  * @param input: the user input to handle
+  * @param userChars: Chars received from the console
+  * 	   userCharsReceived: number of characters received
   * @retval None
   */
 void encode_decode_user_input(char* userChars, int userCharsReceived) {
-	if(userChars[0] != 'M') {
-		return;
-	}
 
-	/* Encode Mode */
-	if(userChars[1] == 'E') {
-		if(userCharsReceived < 4) {
-			return;
+	toEncode = 0x00;
+	toDecode = 0x0000;
+
+	//Manchester Encoding
+	if(userChars[0] == 'M') {
+
+		/* Encode Mode */
+		if(userChars[1] == 'E') {
+			if(userCharsReceived < 4) {
+				return;
+			}
+
+			toEncode = (char_to_hex(userChars[2]) << 4) | (char_to_hex(userChars[3]));
+			debug_printf("%X --> %X\r\n", toEncode, s4435360_hal_manchester_byte_encoder(toEncode));
+
+		/* Decode Mode */
+		} else if(userChars[1] == 'D') {
+			if(userCharsReceived < 6) {
+				return;
+			}
+
+			toDecode = (uint16_t)(char_to_hex(userChars[2]) << 12) |
+					(char_to_hex(userChars[3]) << 8) |
+					(char_to_hex(userChars[4]) << 4) |
+					(char_to_hex(userChars[5]) << 0);
+
+			debug_printf("%X --> %X\r\n", toDecode, s4435360_hal_manchester_byte_decoder(toDecode));
 		}
 
-		toEncode = (char_to_hex(userChars[2]) << 4) | (char_to_hex(userChars[3]));
-		debug_printf("%X --> %X\r\n", toEncode, s4435360_hal_manchester_byte_encoder(toEncode));
+	//Hamming Encoding
+	} else if(userChars[0] == 'H') {
+		/* Encode Mode */
+			if(userChars[1] == 'E') {
+				if(userCharsReceived < 4) {
+					return;
+				}
 
-	/* Decode Mode */
-	} else if(userChars[1] == 'D') {
-		if(userCharsReceived < 6) {
-			return;
-		}
+				toEncode = (char_to_hex(userChars[2]) << 4) |
+						(char_to_hex(userChars[3]));
+				debug_printf("%X\r\n", hamming_byte_encoder(toEncode));
 
-		toDecode = (uint16_t)(char_to_hex(userChars[2]) << 12) |
-				(char_to_hex(userChars[3]) << 8) |
-				(char_to_hex(userChars[4]) << 4) |
-				(char_to_hex(userChars[5]) << 0);
+			/* Decode Mode */
+			} else if(userChars[1] == 'D') {
+				if(userCharsReceived < 6) {
+					return;
+				}
 
-		debug_printf("%X --> %X\r\n", toDecode, s4435360_hal_manchester_byte_decoder(toDecode));
+				toDecode = (char_to_hex(userChars[2]) << 12) |
+						(char_to_hex(userChars[3]) << 8) |
+						(char_to_hex(userChars[4]) << 4) |
+						(char_to_hex(userChars[5]) << 0);
+
+				HammingDecodedOutput output = hamming_byte_decoder(toDecode);
+				if(output.uncorrectableError) {
+					debug_printf("2-bit ERROR\r\n");
+				} else {
+					debug_printf("%X (Full: %X ErrMask: %04X)\r\n",
+							output.decodedOutput,
+							output.fullDecodedOutput,
+							output.errorMask);
+				}
+			}
 	}
 }
 
 void encode_decode_timer1_handler(void){}
-
 void encode_decode_timer2_handler(void){}
-
 void encode_decode_timer3_handler(void){}

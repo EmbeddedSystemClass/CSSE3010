@@ -13,6 +13,13 @@
 #include "s4435360_hal_pantilt.h"
 #include "s4435360_hal_joystick.h"
 
+int anglePrintingFlag = 0;
+
+/**
+  * @brief Initialises pantilt joystick mode
+  * @param None
+  * @retval None
+  */
 void pantilt_joystick_init(void) {
 	debug_printf("Pantilt joystick mode\r\n");
 
@@ -34,28 +41,51 @@ void pantilt_joystick_init(void) {
 
 }
 
+/**
+  * @brief Deinitialises pantilt joystick mode
+  * @param None
+  * @retval None
+  */
 void pantilt_joystick_deinit(void) {
-	debug_printf("Exiting pantilt joystick mode\r\n");
 	HAL_TIM_Base_Stop_IT(&timer1Init);
 }
 
+/**
+  * @brief Run functionality for pantilt joystick mode
+  * @param None
+  * @retval None
+  */
 void pantilt_joystick_run(void) {
-	debug_printf("Running pantilt joystick mode\r\n");
 
-	//Update pantilt with joystick readings
-	s4435360_hal_pantilt_pan_write((((s4435360_hal_joystick_x_read()/4096.0) * 170) - 85));
-	s4435360_hal_pantilt_tilt_write((((s4435360_hal_joystick_y_read()/4096.0) * 170) - 85));
+	int panAngle = ((s4435360_hal_joystick_x_read()/4096.0) * 170) - 85;
+	int tiltAngle = ((s4435360_hal_joystick_y_read()/4096.0) * 170) - 85;
 
+	s4435360_hal_pantilt_pan_write(-1 * panAngle);
+	s4435360_hal_pantilt_tilt_write(tiltAngle);
+
+	if(anglePrintingFlag) {
+		debug_printf("Pan:  %d Tilt:  %d\r\n",
+				panAngle,
+				tiltAngle);
+		anglePrintingFlag = 0;
+	}
 }
 
-void pantilt_joystick_user_input(char* userChars, int userCharsReceived) {
-	debug_printf("Handling input for pantilt joystick mode\r\n");
-}
+/**
+  * @brief Handles user input for pantilt joystick mode
+  * @param userChars: chars received from console
+  * 	   userCharsReceived: number of chars received
+  * @retval None
+  */
+void pantilt_joystick_user_input(char* userChars, int userCharsReceived) {}
 
+/**
+  * @brief Sets the printing flag every second
+  * @param None
+  * @retval None
+  */
 void pantilt_joystick_timer1_handler(void) {
-	debug_printf("Pan:  %d Tilt:  %d\r\n",
-			s4435360_hal_pantilt_pan_read(),
-			s4435360_hal_pantilt_tilt_read());
+	anglePrintingFlag = 1;
 }
 
 void pantilt_joystick_timer2_handler(void) {}

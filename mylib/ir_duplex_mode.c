@@ -14,15 +14,14 @@
 #include "s4435360_hal_manchester.h"
 #include <string.h>
 
-#define TRANSMIT_HEADER_BITS		0b0101000000000000000010
+#define TRANSMIT_HEADER_BITS		(uint64_t)(0b0101000000000000000010)
 #define IR_RECEIVE_PERIOD 			100
 
 char irUserCharCount = 0;
 char irUserChars[11];
 char irUserCharsRetransmit[11];
-int currentlyTransmitting = 0;
-uint32_t bitsToTransmit = TRANSMIT_HEADER_BITS;
-int transmitBit = 21;
+uint64_t bitsToTransmit = TRANSMIT_HEADER_BITS;
+int transmitBit;
 int txFlag = 0;
 int receivedIrAck, IRretransmitAttempts;
 
@@ -33,11 +32,25 @@ uint32_t TIMxCLKfreq = 16000000; //SystemCoreClock;
 
 /* Captured Values */
 uint32_t lastCaptureValue = 0;
-uint8_t captureChar = 0x00;
-int bitsReceived, receivePeriod, receivedSTX, receivedString, irCharsReceived;
+uint16_t captureChar = 0x0000;
+int bitsReceived, receivedSTX, receivedString, irCharsReceived;
 unsigned char rxBuffer[11];
 unsigned char rxChar;
 int irAckTimerCounter;
+
+int receiveBitLength;
+(*rxCharHandler)(uint16_t);
+
+void configure_transmission(uint64_t bits, int index, uint16_t irPeriod) {
+	bitsToTransmit = bits;
+	transmitBit = index;
+	__HAL_TIM_SET_AUTORELOAD(&timer1Init, irPeriod);
+}
+
+void configure_receive(int length, void (*charHandler)(uint16_t)) {
+	receiveBitLength = length;
+	rxCharHandler = charHandler;
+}
 
 /**
   * @brief Instigates sending a char. Returns 1 iff
@@ -50,15 +63,25 @@ int irAckTimerCounter;
   */
 void send_char(char input) {
 	s4435360_hal_ir_carrier_on();
-	bitsToTransmit = TRANSMIT_HEADER_BITS | ((uint32_t)(s4435360_hal_manchester_byte_encoder(input)) << 2);
-	transmitBit = 21;
+	uint64_t bits = TRANSMIT_HEADER_BITS | ((uint64_t)(s4435360_hal_manchester_byte_encoder(input)) << 2);
+	configure_transmission(bits, 21, 50000 / 100);
 	currentlyTransmitting = 1;
 	HAL_TIM_Base_Start_IT(&timer1Init);
 	while(currentlyTransmitting) {}
+	s4435360_hal_ir_carrier_off();
 	HAL_Delay(10);
+
 }
 
+/**
+  * @brief Sends a string over IR
+  * @param string: string to send
+  * 	   numChars: number of chars from string to send
+  * @retval None
+  */
 void send_string(char* string, int numChars) {
+	lightbar_seg_set(SEND_INDICATOR_SEGMENT, 1);
+
 	send_char(STX_CHAR);
 	debug_printf("Sent from IR: ");
 	for(int i = 0; i < numChars; i++) {
@@ -67,6 +90,8 @@ void send_string(char* string, int numChars) {
 	}
 	debug_printf("\r\n");
 	send_char(ETX_CHAR);
+
+	lightbar_seg_set(SEND_INDICATOR_SEGMENT, 0);
 }
 
 
@@ -81,7 +106,7 @@ void ir_duplex_init(void) {
 	ir_rx_init();
 
 	lastCaptureValue = HAL_TIM_ReadCapturedValue(&rx_TIM_Init, TIM_CHANNEL_4);
-	captureChar = 0x00;
+	captureChar = 0x0000;
 	bitsReceived = 0;
 	receivedSTX = 0;
 	receivedChar = 0;
@@ -90,8 +115,15 @@ void ir_duplex_init(void) {
 	txFlag = 0;
 	receivedIrAck = 0;
 	IRretransmitAttempts = 0;
+	currentlyTransmitting = 0;
+	configure_receive(8, &handle_received_char);
 }
 
+/**
+  * @brief Initialises timer 1 for IR transmission
+  * @param None
+  * @retval None
+  */
 void ir_timer1_init(void) {
 	__TIMER1_CLK_ENABLE();
 
@@ -109,7 +141,11 @@ void ir_timer1_init(void) {
 	HAL_NVIC_EnableIRQ(TIMER1_IRQ);
 }
 
-
+/**
+  * @brief Initialises IR receive input capture
+  * @param None
+  * @retval None
+  */
 void ir_rx_init(void) {
 	/* Initialise receive pin */
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -160,9 +196,14 @@ void ir_rx_init(void) {
 	}
 }
 
-
-void handle_received_char(char rxInput) {
-	//debug_printf("Received '%c'\r\n", rxInput);
+/**
+  * @brief Processes chars received from IR
+  * @param rxinput: char from IR
+  * @retval None
+  */
+void handle_received_char(uint16_t input) {
+	char rxInput = (char)(input);
+	//debug_printf("Received 0x%X and'%c'\r\n", input, rxInput);
 	switch(rxInput) {
 
 		//Begin new string
@@ -221,7 +262,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 			if(pinState == GPIO_PIN_RESET) {
 				lastCaptureValue = currentCaptureValue;
 				bitsReceived++;
-				captureChar = 0x00;
+				captureChar = 0x0000;
 			}
 		} else if(bitsReceived == 1) {
 			//if(pinState == GPIO_PIN_RESET) {} else {}
@@ -230,16 +271,16 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 		} else if(bitsReceived == 2) {
 			lastCaptureValue = currentCaptureValue;
 			bitsReceived++;
-		} else if(bitsReceived < 11) {
+		} else if(bitsReceived < receiveBitLength + 3) {
 			if(captureValueDifference > 1.5 * receivePeriod) {
 				captureChar = captureChar << 1;
 				lastCaptureValue = currentCaptureValue;
 
 				if(pinState == GPIO_PIN_RESET) {
-					captureChar |= 0x01;
+					captureChar |= 0x0001;
 					//debug_printf("1\r\n");
 				} else {
-					captureChar &= 0xFE;
+					captureChar &= 0xFFFE;
 					//debug_printf("0\r\n");
 				}
 
@@ -252,8 +293,9 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 				lastCaptureValue = currentCaptureValue;
 				//Check that stop bit is falling edge
 				if(pinState == GPIO_PIN_SET) {
-					handle_received_char(captureChar);
-					//debug_printf("Handled char %c\r\n", captureChar);
+					rxCharHandler(captureChar);
+					//handle_received_char(captureChar);
+					debug_printf("Receive period %d\r\n", receivePeriod);
 				}
 				bitsReceived = 0;
 				ir_rx_init();
@@ -262,12 +304,23 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 	}
 }
 
+/**
+  * @brief TIM2 handler, rx input capture timer
+  * @param None
+  * @retval None
+  */
 void TIM2_IRQHandler(void) {
 	HAL_TIM_IRQHandler(&rx_TIM_Init);
 }
 
+/**
+  * @brief Timer 1 handler, IR transmission
+  * @param None
+  * @retval None
+  */
 void ir_duplex_timer1_handler(void) {
-	if(bitsToTransmit & (1 << transmitBit)) {
+	//debug_printf("-> %d = %d\r\n", transmitBit, (bitsToTransmit & ((uint64_t)1 << transmitBit)) >> transmitBit);
+	if(bitsToTransmit & ((uint64_t)1 << transmitBit)) {
 		s4435360_hal_ir_datamodulation_set();
 	} else {
 		s4435360_hal_ir_datamodulation_clr();
@@ -276,7 +329,7 @@ void ir_duplex_timer1_handler(void) {
 	if(!transmitBit) {
 		s4435360_hal_ir_datamodulation_clr();
 		s4435360_hal_ir_carrier_off();
-		HAL_TIM_Base_Stop_IT(&timer1Init);
+		HAL_TIM_Base_Stop_IT(&timer1Init); //A659 695A
 		currentlyTransmitting = 0;
 	} else {
 		transmitBit--;
@@ -301,6 +354,9 @@ void ir_duplex_deinit(void) {
   * @retval None
   */
 void ir_duplex_run(void) {
+	lightbar_seg_set(SEND_INDICATOR_SEGMENT, 0);
+	lightbar_seg_set(RECEIVE_INDICATOR_SEGMENT, 0);
+
 	if(receivedChar) {
 		if(rxChar == ACK_CHAR) {
 			debug_printf("Received from IR: ACK\r\n");
@@ -323,11 +379,12 @@ void ir_duplex_run(void) {
 
 		irCharsReceived = 0;
 		receivedString = 0;
+
+		lightbar_seg_set(RECEIVE_INDICATOR_SEGMENT, 1);
 	}
 
 	if(txFlag) {
 		send_string(irUserChars, irUserCharCount);
-		//irUserCharCount = 0;
 		receivedIrAck = 0;
 		strcpy(irUserCharsRetransmit, irUserChars);
 		memset(&irUserChars[0], 0, 11 * sizeof(char));
@@ -355,6 +412,11 @@ void ir_duplex_user_input(char* userChars, int userCharsReceived) {
 	}
 }
 
+/**
+  * @brief Initialises ACK retransmission timer
+  * @param None
+  * @retval None
+  */
 void ir_ack_init(void) {
 	__TIMER2_CLK_ENABLE();
 
@@ -373,8 +435,16 @@ void ir_ack_init(void) {
 	HAL_TIM_Base_Start_IT(&timer2Init);
 	irAckTimerCounter = 0;
 	receivedIrAck = 0;
+
+
+	lightbar_seg_set(ACK_INDICATOR_SEGMENT, 1);
 }
 
+/**
+  * @brief Handler for ACK, retransmission
+  * @param None
+  * @retval None
+  */
 void ir_duplex_timer2_handler(void){
 	//Timer counter for 3s
 	if(irAckTimerCounter < (3 * 100)) {
@@ -390,6 +460,7 @@ void ir_duplex_timer2_handler(void){
 		receivedIrAck = 0;
 		HAL_TIM_Base_Stop_IT(&timer2Init);
 		txFlag = 0;
+		lightbar_seg_set(ACK_INDICATOR_SEGMENT, 0);
 
 	//Retransmit packet
 	} else {
