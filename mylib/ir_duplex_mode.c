@@ -278,10 +278,10 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 
 				if(pinState == GPIO_PIN_RESET) {
 					captureChar |= 0x0001;
-					//debug_printf("1\r\n");
+					debug_printf("");
 				} else {
 					captureChar &= 0xFFFE;
-					//debug_printf("0\r\n");
+					debug_printf("");
 				}
 
 				bitsReceived++;
@@ -294,8 +294,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 				//Check that stop bit is falling edge
 				if(pinState == GPIO_PIN_SET) {
 					rxCharHandler(captureChar);
-					//handle_received_char(captureChar);
-					debug_printf("Receive period %d\r\n", receivePeriod);
+					//debug_printf("Receive period %d\r\n", receivePeriod);
 				}
 				bitsReceived = 0;
 				ir_rx_init();
