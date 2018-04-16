@@ -16,6 +16,8 @@
 #include "s4435360_hal_radio.h"
 #include "s4435360_hal_hamming.h"
 
+/* Private typedef -----------------------------------------------------------*/
+/* Private define ------------------------------------------------------------*/
 #define TIMER_FREQUENCY 			50000
 #define INTERRUPT_FREQUENCY 		10
 #define PAYLOAD_STARTING_INDEX		10
@@ -32,10 +34,13 @@ unsigned char packetHeader[10] = {0xA1,					//Packet type
 unsigned char ackPayload[5] = "A C K";
 unsigned char errPayload[5] = "E R R";
 
+//Payload and char counts for re/transmit
 int radioUserCharCount = 0;
 unsigned char radioUserChars[11];
 int radioUserCharRetransmitCount = 0;
 unsigned char radioUserCharsRetransmit[11];
+
+//Flags
 int receivedInvalidMessage = 0;
 int receivedACK = 0;
 int retransmitAttempts = 0;
@@ -44,8 +49,6 @@ int transmitERR = 0;
 int oldTxStatus;
 int timerCounter = 0;
 
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 void start_ACK_timer(void);
 int isPacketACK(unsigned char* packet);
@@ -139,8 +142,11 @@ void radio_duplex_init(void) {
 	HAL_NVIC_EnableIRQ(TIMER2_IRQ);
 	HAL_TIM_Base_Start_IT(&timer2Init);
 
+	//Init user payload
 	radioUserCharCount = 0;
 	radioUserCharRetransmitCount = 0;
+
+	//Init flags
 	receivedInvalidMessage = 0;
 	receivedACK = 0;
 	retransmitAttempts = 0;
@@ -159,6 +165,7 @@ void radio_duplex_init(void) {
 void radio_duplex_deinit(void) {
 	HAL_TIM_Base_Stop_IT(&timer1Init);
 	HAL_TIM_Base_Stop_IT(&timer2Init);
+	HAL_TIM_Base_Stop_IT(&timer3Init);
 }
 
 /**
@@ -232,6 +239,7 @@ void radio_duplex_run(void) {
 
 			hammingOutput = hamming_byte_decoder(encodedDoubleByte);
 
+			//Check for correct decoding
 			if(hammingOutput.uncorrectableError) {
 				receivedInvalidMessage = 1;
 			} else {
@@ -239,11 +247,12 @@ void radio_duplex_run(void) {
 			}
 		}
 
-		/* Check if message is an acknolwedgement */
+		/* Check if message is an acknowledgement */
 		if(isPacketACK(decodedOutput)) {
 			receivedACK = 1;
 			print_received_packet(decodedOutput);
 		} else {
+
 			/* Check if message is an ERR */
 			if(isPacketERR(decodedOutput)) {
 				receivedACK = 1;
@@ -286,7 +295,8 @@ void radio_duplex_run(void) {
  * @retval None
  */
 void radio_duplex_user_input(char* userChars, int userCharsReceived) {
-	debug_printf("String: '%s', num %d\r\n", userChars, userCharsReceived);
+
+	//Check for RTabc... pattern
 	if((userChars[0] == 'R') && (userChars[1] == 'T') && userCharsReceived > 2) {
 		s4435360_radio_txstatus = PACKET_READY_TO_SEND;
 		retransmitAttempts = 0;
@@ -323,15 +333,6 @@ void start_ACK_timer(void) {
 }
 
 /**
- * @brief Handler for timer 2, radio fsm processing
- * @param None
- * @retval None
- */
-void radio_duplex_timer2_handler(void) {
-	s4435360_radio_fsmprocessing();
-}
-
-/**
  * @brief Handler for timer 1, ACK receipt and retransmission
  * @param None
  * @retval None
@@ -365,6 +366,16 @@ void radio_duplex_timer1_handler(void) {
 
 }
 
+/**
+ * @brief Handler for timer 2, radio fsm processing
+ * @param None
+ * @retval None
+ */
+void radio_duplex_timer2_handler(void) {
+	s4435360_radio_fsmprocessing();
+}
+
+//Timer 3 not used
 void radio_duplex_timer3_handler(void){}
 
 /**

@@ -27,13 +27,11 @@
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
 int heartbeatCounter = 0;
 int heartBeatValue = 0;
-char userChars[13];
-int userCharsReceived = 0;
-int passCharsToMode = 0;
 
-
+/* Functionality structs for modes */
 ModeFunctions idleModeFunctions = {.modeID = 0x00,
 			.init = &idle_init,
 			.deinit = &idle_deinit,
@@ -113,9 +111,11 @@ ModeFunctions integrationSpeedModeFunctions = {.modeID = 0x07,
 		.timer3Handler = &integration_speed_timer3_handler
 };
 
-
-/* Private function prototypes -----------------------------------------------*/
-
+/**
+ * @brief Prints help information to terminal
+ * @param None
+ * @retval None
+ */
 void print_help_information(void) {
 	debug_printf("CSSE3010 Project 1\r\n");
 	debug_printf("1 Idle\r\n");
@@ -129,10 +129,19 @@ void print_help_information(void) {
 	debug_printf("\r\n");
 }
 
+/**
+ * @brief Changes the current mode. Calls the previous mode's
+ * 			deinit function, updates the lightbar, calls the
+ * 			new mode's init function and sets the current mode
+ * 			to the new mode's function struct
+ * @param mode: the new mode
+ * @retval None
+ */
 void change_mode(char mode) {
 
 	ModeFunctions nextModeFunctions;
 
+	/* Change to new mode */
 	switch(mode) {
 
 		case IDLE_CHAR:
@@ -171,16 +180,24 @@ void change_mode(char mode) {
 			return;
 	}
 
+	//Deinitialises old mode
 	(*currentModeFunctions.deinit)();
 	currentModeFunctions = nextModeFunctions;
 
+	//Updates the lighbar segment
 	lightbar_seg_set(MODE_ID_SEGMENT, (currentModeFunctions.modeID & 0x01));
 	lightbar_seg_set(MODE_ID_SEGMENT + 1, (currentModeFunctions.modeID & 0x02));
 	lightbar_seg_set(MODE_ID_SEGMENT + 2, (currentModeFunctions.modeID & 0x04));
 
+	//Initialises new mode
 	(*currentModeFunctions.init)();
 }
 
+/**
+ * @brief Updates the lightbar heart beat
+ * @param None
+ * @retval None
+ */
 void update_heartbeat(void) {
 	if(heartbeatCounter >= HEARTBEAT_PERIOD) {
 		lightbar_seg_set(HEARTBEAT_SEGMENT, heartBeatValue);
@@ -193,6 +210,7 @@ void update_heartbeat(void) {
 
 void main(void) {
 
+	/* Initialise hardware */
 	BRD_init();
 	BRD_LEDInit();
 	s4435360_hal_ir_init();
@@ -202,37 +220,47 @@ void main(void) {
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 	s4435360_radio_init();
 
-	setbuf(stdout, NULL);
 	currentModeFunctions = idleModeFunctions;
 	s4435360_lightbar_write(0x00);
 	heartBeatValue = 0;
 
 	char userInput;
+	char userChars[13];
+	int userCharsReceived = 0;
+	int passCharsToMode = 0;
+	setbuf(stdout, NULL);
 
 	while(1) {
 
 		userInput = debug_getc();
 
+		//Handle user input
 		if(userInput) {
 			debug_printf("%c", userInput);
 
 			switch(userInput) {
+
+				//Passes char to current mode to handle
 				case ENTER_CHAR:
 					passCharsToMode = 1;
 					debug_printf("\r");
 					break;
 
+				//Removes the last entered character
 				case BACKSPACE_CHAR:
 					if(userCharsReceived) {
 						userCharsReceived--;
 					}
 					break;
 
+				//Prints help information
 				case QUESTION_CHAR:
 					print_help_information();
 					break;
 
 				default:
+
+					//Check for valid input
 					if(((userInput >= '0') && (userInput <= '9')) ||
 										((userInput >= 'A') && (userInput <= 'Z')) ||
 										((userInput >= 'a') && (userInput <= 'z')) ||
@@ -241,6 +269,7 @@ void main(void) {
 							userCharsReceived++;
 					}
 
+					//If buffer full
 					if(userCharsReceived >= MAX_USER_CHARS) {
 						passCharsToMode = 1;
 					}
@@ -248,18 +277,25 @@ void main(void) {
 			}
 		}
 
-
+		//Buffer set to pass to current mode
 		if(passCharsToMode) {
+
+			//Don't pass in buffer if its a change of mode command
 			if((userChars[0] >= '0') && (userChars[0] <= '9')) {
 				change_mode(userChars[0]);
 				userChars[0] = 0;
+
+			//Pass in buffer to mode to handle
 			} else {
 				(*currentModeFunctions.userInput)(userChars, userCharsReceived);
 			}
+
+			//Reset buffer
 			userCharsReceived = 0;
 			passCharsToMode = 0;
 		}
 
+		//Run mode
 		(*currentModeFunctions.run)();
 
 		update_heartbeat();
@@ -267,6 +303,11 @@ void main(void) {
 	}
 }
 
+/**
+ * @brief Handles generic timer capability for modes
+ * @param htim: the elapsed timer
+ * @retval None
+ */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if(htim->Instance == TIMER1) {
 		(*currentModeFunctions.timer1Handler)();
@@ -277,19 +318,29 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	}
 }
 
+/**
+ * @brief Handler for generic timer 1
+ * @param None
+ * @retval None
+ */
 void TIMER1_HANDLER(void) {
 	HAL_TIM_IRQHandler(&timer1Init);
 }
 
+/**
+ * @brief Handler for generic timer 2
+ * @param None
+ * @retval None
+ */
 void TIMER2_HANDLER(void) {
 	HAL_TIM_IRQHandler(&timer2Init);
 }
 
+/**
+ * @brief Handler for generic timer 3
+ * @param None
+ * @retval None
+ */
 void TIMER3_HANDLER(void) {
 	HAL_TIM_IRQHandler(&timer3Init);
 }
-
-
-
-
-

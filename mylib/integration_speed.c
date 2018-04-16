@@ -20,43 +20,51 @@
 #include "radio_duplex_mode.h"
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
+//Timer definitions
 #define TIMER_FREQUENCY 				50000
 #define INTERRUPT_FREQUENCY 			10
+
+//Payload definitions
 #define PAYLOAD_STARTING_INDEX			10
-#define PACKET_READY_TO_SEND			1
-#define PACKET_NOT_READY_TO_SEND		0
-#define TX_ERROR_INDEX					PAYLOAD_STARTING_INDEX + 1
-#define RX_ERROR_INDEX					PAYLOAD_STARTING_INDEX + 2
+#define TX_ERROR_STARTING_INDEX			PAYLOAD_STARTING_INDEX + 7
+#define RX_ERROR_STARTING_INDEX			PAYLOAD_STARTING_INDEX + 19
+
+//Transmit definitions
 #define BLAST_LETTER 					'a'
 #define STARTING_TRANSMIT_BIT 			38
 #define HAMMING_PAYLOAD_HEADER_BITS 	0x1400000002
-#define TX_ERROR_STARTING_INDEX			PAYLOAD_STARTING_INDEX + 7
-#define RX_ERROR_STARTING_INDEX			PAYLOAD_STARTING_INDEX + 19
 #define MAX_TX_ERROR					10
+#define MAX_TX_RATE						5
+#define MIN_TX_RATE						1000
+#define TX_RATE_MULTIPLIER				2
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
+//Transmit constants
 unsigned char speedTxAddress[5] = {0x52, 0x33, 0x22, 0x11, 0x00};
 unsigned char speedRxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
 unsigned char speedChannel = 52;
-unsigned char errorPacketHeader[10] = {0xA1,					//Packet type
+unsigned char errorPacketHeader[10] = {0xA1,	//Packet type
 		0x52, 0x33, 0x22, 0x11,					//Destination address
 		0x07, 0x36, 0x35, 0x44,  				//Source address
 		0x00};
 
+//Integration speed variables
 int charBlastOn = 0;
 uint8_t txErrors = 0, rxErrors = 0;
 uint16_t txRate, rxRate;
-
 int packetsReceived = 0, packetsSent = 0;
-
 int receivedRadioPacket = 0;
 
+//Transmit hamming packet variables
 uint64_t transmitBits = HAMMING_PAYLOAD_HEADER_BITS;
 int transmitBitIndex = STARTING_TRANSMIT_BIT;
 
-
-/* Private function prototypes -----------------------------------------------*/
-
+/**
+ * @brief Forms an error packet into the specified pointer
+ * @param packet: pointer to packet to form
+ * @retval None
+ */
 void form_error_packet(unsigned char* packet) {
 	/* Add packet header */
 	memcpy(packet, errorPacketHeader, PAYLOAD_STARTING_INDEX);
@@ -68,6 +76,11 @@ void form_error_packet(unsigned char* packet) {
 	memcpy(&packet[PAYLOAD_STARTING_INDEX], payload, 22);
 }
 
+/**
+ * @brief Reverses the bits in a byte to change its endianness
+ * @param toReverse: byte to reverse
+ * @retval the reversed byte
+ */
 uint8_t reverse_endianness(uint8_t toReverse) {
    toReverse = (toReverse & 0xF0) >> 4 | (toReverse & 0x0F) << 4;
    toReverse = (toReverse & 0xCC) >> 2 | (toReverse & 0x33) << 2;
@@ -75,39 +88,58 @@ uint8_t reverse_endianness(uint8_t toReverse) {
    return toReverse;
 }
 
+/**
+ * @brief Reverses the endianness of the bytes in the hamming code
+ * @param original: hamming coded word to reverse
+ * @retval reversed hamming coded word
+ */
 uint16_t flip_hamming(uint16_t original) {
 	return (uint16_t)(reverse_endianness((uint8_t)(original >> 8))) << 8 |
 			(uint16_t)(reverse_endianness((uint8_t)original));
 }
 
-void send_hamming_char(char c) {
+/**
+ * @brief Hamming encodes, manchester encodes and transmits a character
+ * @param toTransmit: the character to transmit
+ * @retval None
+ */
+void send_hamming_char(char toTransmit) {
 	s4435360_hal_ir_carrier_on();
-	uint16_t hammingEncoded = flip_hamming(hamming_byte_encoder(c));
 
+	//Hamming encode character
+	uint16_t hammingEncoded = flip_hamming(hamming_byte_encoder(toTransmit));
+
+	//Manchester encode bytes
 	uint16_t manchesterEncoded1 = s4435360_hal_manchester_byte_encoder((uint8_t)(hammingEncoded >> 8));
 	uint16_t manchesterEncoded2 = s4435360_hal_manchester_byte_encoder((uint8_t)hammingEncoded);
 
-	//debug_printf("%X --> %X, %X --> %X\r\n", (uint8_t)(hammingEncoded >> 8), manchesterEncoded1, (uint8_t)hammingEncoded, manchesterEncoded2);
-
+	//Form transmit packet
 	transmitBits = HAMMING_PAYLOAD_HEADER_BITS | ((uint64_t)manchesterEncoded1 << 18) | ((uint64_t)manchesterEncoded2 << 2);
 
-	//debug_printf("---%X\r\n", transmitBits);
+	//Transmit packet
 	configure_transmission(transmitBits, STARTING_TRANSMIT_BIT, 50000 / txRate);
 	currentlyTransmitting = 1;
 	HAL_TIM_Base_Start_IT(&timer1Init);
 	while(currentlyTransmitting) {}
 	s4435360_hal_ir_carrier_off();
-	HAL_Delay(10); //A659 695A
+	HAL_Delay(10);
 
 }
 
+/**
+ * @brief IR character receive handler for hamming encoded chars
+ * @param capture: the received hamming encoded char
+ * @retval None
+ */
 void hamming_char_handler(uint16_t capture) {
 	HammingDecodedOutput output = hamming_byte_decoder(capture);
 
+	//Two bit error
 	if(output.uncorrectableError) {
 		rxErrors += 2;
 	}
 
+	//One bit error
 	if(output.errorMask) {
 		rxErrors++;
 	}
@@ -121,7 +153,7 @@ void hamming_char_handler(uint16_t capture) {
 }
 
 /**
- * @brief Initialises the duplex functionality for integration challenge
+ * @brief Initialises the variable speed functionality for integration challenge
  * @param None
  * @retval None
  */
@@ -199,6 +231,7 @@ void integration_speed_deinit(void) {
  */
 void integration_speed_run(void) {
 
+	//Only send packets in charBlastOn mode
 	if(!charBlastOn) {
 		return;
 	}
@@ -250,6 +283,7 @@ void integration_speed_run(void) {
 		lightbar_seg_set(RECEIVE_INDICATOR_SEGMENT, 1);
 	}
 
+	//Prints information every 10 packets sent/received
 	if(packetsReceived + packetsSent >= 10) {
 		debug_printf("Tx Rate: %d Rx Rate: %d\r\nTx Errs: %d Rx Errs: %d\r\n",
 				txRate, PERIOD_REGISTER_TIME_SCALAR / receivePeriod,
@@ -258,6 +292,7 @@ void integration_speed_run(void) {
 		packetsSent = 0; // %= 10;
 	}
 
+	//Send character
 	if(!currentlyTransmitting) {
 		send_hamming_char(BLAST_LETTER);
 		packetsSent++;
@@ -272,6 +307,7 @@ void integration_speed_run(void) {
  * @retval None
  */
 void integration_speed_user_input(char* userChars, int userCharsReceived) {
+	//Toggle charBlastOn mode
 	charBlastOn = 1 - charBlastOn;
 }
 
@@ -286,7 +322,7 @@ void integration_speed_timer2_handler(void) {
 }
 
 /**
- * @brief Handler for timer 1, ACK receipt and retransmission
+ * @brief Handler for timer 1, ACK transmission
  * @param None
  * @retval None
  */
@@ -295,10 +331,17 @@ void integration_speed_timer1_handler(void) {
 }
 
 
-//Should be set up to trigger every second
+/**
+ * @brief Handler for timer 3, 1s timer
+ * @param None
+ * @retval None
+ */
 void integration_speed_timer3_handler(void){
+
+	//Send radio packet update
 	s4435360_radio_txstatus = 1;
 
+	//If received no packet
 	if(!receivedRadioPacket) {
 		txErrors = packetsSent;
 	}
@@ -306,8 +349,12 @@ void integration_speed_timer3_handler(void){
 	receivedRadioPacket = 0;
 
 	if(txErrors > MAX_TX_ERROR) {
-		txRate /= 2;
+		txRate /= TX_RATE_MULTIPLIER;
 	} else {
-		txRate *= 2;
+		txRate *= TX_RATE_MULTIPLIER;
 	}
+
+	//Confine txRate between MIN_TX_RATE and MAX_TX_RATE
+	txRate = txRate > MAX_TX_RATE ? MAX_TX_RATE : txRate;
+	txRate = txRate < MIN_TX_RATE ? MIN_TX_RATE : txRate;
 }

@@ -12,7 +12,10 @@
 #include "pantilt_terminal_mode.h"
 #include "s4435360_hal_pantilt.h"
 
+//Flag for printing, set in 1s interrupt
 int printFlag = 0;
+
+//Current pan and tilt angles
 int panAngle = 0, tiltAngle = 0;
 
 /**
@@ -23,6 +26,7 @@ int panAngle = 0, tiltAngle = 0;
 void pantilt_terminal_init(void) {
 	debug_printf("Pantilt terminal mode\r\n");
 
+	//Initialises 1s printing timer
 	__TIMER1_CLK_ENABLE();
 
 	/* TIM Base configuration */
@@ -39,6 +43,7 @@ void pantilt_terminal_init(void) {
 	HAL_NVIC_EnableIRQ(TIMER1_IRQ);
 	HAL_TIM_Base_Start_IT(&timer1Init);
 
+	//Initialises pan tilt angles to 0
 	panAngle = 0;
 	tiltAngle = 0;
 
@@ -51,7 +56,6 @@ void pantilt_terminal_init(void) {
  */
 void pantilt_terminal_deinit(void) {
 	HAL_TIM_Base_Stop_IT(&timer1Init);
-	debug_printf("Exiting pantilt terminal mode\r\n");
 }
 
 /**
@@ -60,6 +64,8 @@ void pantilt_terminal_deinit(void) {
  * @retval None
  */
 void pantilt_terminal_run(void) {
+
+	//Print every 1s
 	if(printFlag) {
 		debug_printf("Pan:  %d Tilt:  %d\r\n",
 					panAngle, tiltAngle);
@@ -74,27 +80,45 @@ void pantilt_terminal_run(void) {
  * @retval None
  */
 void pantilt_terminal_user_input(char* userChars, int userCharsReceived) {
+
+	/* Process all valid WASD in user input */
 	for(int i = 0; i < userCharsReceived; i++) {
 		switch(userChars[i]) {
+
 			case 'A':
 				panAngle += 5;
 				break;
+
 			case 'D':
 				panAngle -= 5;
 				break;
+
 			case 'W':
 				tiltAngle += 5;
 				break;
+
 			case 'S':
 				tiltAngle -= 5;
 				break;
+
 			default:
 				break;
 		}
 	}
 
-	s4435360_hal_pantilt_tilt_write(tiltAngle);
-	s4435360_hal_pantilt_pan_write(panAngle);
+	//Remove jitter
+	if((tiltAngle < 5) || (tiltAngle > -5)) {
+		s4435360_hal_pantilt_tilt_write(0);
+	} else {
+		s4435360_hal_pantilt_tilt_write(tiltAngle);
+	}
+
+	//Remove jitter
+	if((panAngle < 5) || (panAngle > -5)) {
+		s4435360_hal_pantilt_pan_write(0);
+	} else {
+		s4435360_hal_pantilt_pan_write(panAngle);
+	}
 }
 
 /**

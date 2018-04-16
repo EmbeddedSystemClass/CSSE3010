@@ -19,23 +19,29 @@
 #include "radio_duplex_mode.h"
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
+//Timer definitions
 #define TIMER_FREQUENCY 			50000
 #define INTERRUPT_FREQUENCY 		10
+
+//Payload index definitions
 #define PAYLOAD_STARTING_INDEX		10
 #define PACKET_READY_TO_SEND		1
 #define PACKET_NOT_READY_TO_SEND	0
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+//TX packet constants
 unsigned char duplexTxAddress[5] = {0x52, 0x33, 0x22, 0x11, 0x00};
 unsigned char duplexRxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
 unsigned char duplexChannel = 52;
 
+//User inputs for re/transmission
 int duplexUserCharCount = 0;
 unsigned char duplexUserChars[11];
 int duplexUserCharRetransmitCount = 0;
 unsigned char duplexUserCharsRetransmit[11];
 
+//Flags
 int duplexReceivedACK = 0;
 int duplexReceivedInvalidMessage = 0;
 int duplexRetransmitAttempts = 0;
@@ -81,6 +87,7 @@ void integration_duplex_init(void) {
 	ir_rx_init();
 	ir_timer1_init();
 
+	//Init flags
 	duplexReceivedACK = 0;
 	duplexReceivedInvalidMessage = 0;
 	duplexRetransmitAttempts = 0;
@@ -210,6 +217,8 @@ void integration_duplex_run(void) {
  * @retval None
  */
 void integration_duplex_user_input(char* userChars, int userCharsReceived) {
+
+	//Check for DTabc... pattern
 	if((userChars[0] == 'D') && (userChars[1] == 'T') && userCharsReceived > 2) {
 		s4435360_radio_txstatus = PACKET_READY_TO_SEND;
 		duplexRetransmitAttempts = 0;

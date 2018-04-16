@@ -13,6 +13,7 @@
 #include "s4435360_hal_manchester.h"
 #include "s4435360_hal_hamming.h"
 
+//User chars to encode or decode
 uint8_t toEncode = 0x00;
 uint16_t toDecode = 0x0000;
 
@@ -140,6 +141,7 @@ void encode_decode_user_input(char* userChars, int userCharsReceived) {
 	}
 }
 
+/* Timer functionality not used*/
 void encode_decode_timer1_handler(void){}
 void encode_decode_timer2_handler(void){}
 void encode_decode_timer3_handler(void){}

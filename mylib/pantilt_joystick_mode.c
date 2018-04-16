@@ -13,6 +13,7 @@
 #include "s4435360_hal_pantilt.h"
 #include "s4435360_hal_joystick.h"
 
+//Print flag
 int anglePrintingFlag = 0;
 
 /**
@@ -23,6 +24,7 @@ int anglePrintingFlag = 0;
 void pantilt_joystick_init(void) {
 	debug_printf("Pantilt joystick mode\r\n");
 
+	//1s printing timer
 	__TIMER1_CLK_ENABLE();
 
 	/* TIM Base configuration */
@@ -60,8 +62,17 @@ void pantilt_joystick_run(void) {
 	int panAngle = ((s4435360_hal_joystick_x_read()/4096.0) * 170) - 85;
 	int tiltAngle = ((s4435360_hal_joystick_y_read()/4096.0) * 170) - 85;
 
-	s4435360_hal_pantilt_pan_write(-1 * panAngle);
-	s4435360_hal_pantilt_tilt_write(tiltAngle);
+	if((panAngle < 5) || (panAngle > -5)) {
+		s4435360_hal_pantilt_pan_write(0);
+	} else {
+		s4435360_hal_pantilt_pan_write(-1 * panAngle);
+	}
+
+	if((tiltAngle < 5) || (tiltAngle > -5)) {
+		s4435360_hal_pantilt_tilt_write(0);
+	} else {
+		s4435360_hal_pantilt_tilt_write(tiltAngle);
+	}
 
 	if(anglePrintingFlag) {
 		debug_printf("Pan:  %d Tilt:  %d\r\n",
@@ -88,5 +99,6 @@ void pantilt_joystick_timer1_handler(void) {
 	anglePrintingFlag = 1;
 }
 
+/* Unused timer functionality */
 void pantilt_joystick_timer2_handler(void) {}
 void pantilt_joystick_timer3_handler(void) {}

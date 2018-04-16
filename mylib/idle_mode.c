@@ -43,6 +43,7 @@ void idle_run(void) {
  */
 void idle_user_input(char* userChars, int userCharsReceived) {}
 
+/* Timer functionality not used */
 void idle_timer1_handler(void){}
 void idle_timer2_handler(void){}
 void idle_timer3_handler(void){}
