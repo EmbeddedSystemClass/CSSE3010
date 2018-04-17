@@ -1,13 +1,11 @@
 /**
   ******************************************************************************
-  * @file    project1/integration_duplex_mode.c
-  * @author  SE
-  * @date    14032018-21032018
-  * @brief   Duplex communication functionality for integration mode for Project 1
+  * @file    proj1/encode_decode_mode.c
+  * @author  Samuel Eadie - 44353607
+  * @date    21032018-18042018
+  * @brief   Provides integration duplex mode functionality for project 1
   ******************************************************************************
-  *
   */
-
 /* Includes ------------------------------------------------------------------*/
 #include "string.h"
 #include "structures.h"
@@ -31,7 +29,7 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 //TX packet constants
-unsigned char duplexTxAddress[5] = {0x98, 0x24, 0x32, 0x44, 0x00}; //{0x52, 0x33, 0x22, 0x11, 0x00};{0x52, 0x33, 0x22, 0x11, 0x00};
+unsigned char duplexTxAddress[5] = {0x52, 0x33, 0x22, 0x11, 0x00};
 unsigned char duplexRxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
 unsigned char duplexChannel = 52;
 
@@ -74,7 +72,7 @@ void handle_received_ack(uint16_t input) {
  */
 void integration_duplex_init(void) {
 
-	debug_printf("Integration duplex mode\r\n");
+	debug_printf("Mode 7: Full Duplex\r\n");
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
 	__TIMER2_CLK_ENABLE();

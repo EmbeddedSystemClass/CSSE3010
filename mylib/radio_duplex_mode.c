@@ -1,11 +1,10 @@
 /**
   ******************************************************************************
-  * @file    project1/radio_duplex_mode.c
-  * @author  SE
-  * @date    14032018-21032018
-  * @brief   Radio duplex mode functionality for Project 1
+  * @file    proj1/radio_duplex_mode.c
+  * @author  Samuel Eadie - 44353607
+  * @date    21032018-18042018
+  * @brief   Duplex radio communication mode functionality for project 1
   ******************************************************************************
-  *
   */
 
 /* Includes ------------------------------------------------------------------*/
@@ -24,7 +23,7 @@
 #define PACKET_READY_TO_SEND		1
 #define PACKET_NOT_READY_TO_SEND	0
 
-unsigned char txAddress[5] = {0x98, 0x24, 0x32, 0x44, 0x00}; //{0x52, 0x33, 0x22, 0x11, 0x00};
+unsigned char txAddress[5] = {0x52, 0x33, 0x22, 0x11, 0x00};
 unsigned char rxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
 unsigned char channel = 52;
 unsigned char packetHeader[10] = {0xA1,					//Packet type
@@ -114,7 +113,7 @@ void print_received_packet(uint8_t* packet_buffer) {
  */
 void radio_duplex_init(void) {
 
-	debug_printf("Radio duplex mode\r\n");
+	debug_printf("Mode 6: Radio Duplex\r\n");
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 	s4435360_radio_init();
 

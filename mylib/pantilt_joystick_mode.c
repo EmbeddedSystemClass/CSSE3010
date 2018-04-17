@@ -1,12 +1,11 @@
 /**
   ******************************************************************************
-  * @file    project1/pantilt_joystick_mode.c
-  * @author  SE
+  * @file    proj1/pantilt_joystick_mode.c
+  * @author  Samuel Eadie - 44353607
   * @date    21032018-18042018
-  * @brief   Pantilt joystick mode functionality for project 1
+  * @brief   Provides pantilt joystick mode functionality for project 1
   ******************************************************************************
   */
-
 /* Includes ------------------------------------------------------------------*/
 #include "structures.h"
 #include "pantilt_joystick_mode.h"
@@ -14,6 +13,9 @@
 #include "s4435360_hal_joystick.h"
 
 #define DENOISING_TOLERANCE 5
+
+int joystickPanAngle = 0;
+int joystickTiltAngle = 0;
 
 //Print flag
 int anglePrintingFlag = 0;
@@ -24,7 +26,7 @@ int anglePrintingFlag = 0;
   * @retval None
   */
 void pantilt_joystick_init(void) {
-	debug_printf("Pantilt joystick mode\r\n");
+	debug_printf("Mode 3: Pantilt joystick\r\n");
 
 	//1s printing timer
 	__TIMER1_CLK_ENABLE();
@@ -42,6 +44,9 @@ void pantilt_joystick_init(void) {
 	HAL_NVIC_SetPriority(TIMER1_IRQ, 10, 0);
 	HAL_NVIC_EnableIRQ(TIMER1_IRQ);
 	HAL_TIM_Base_Start_IT(&timer1Init);
+
+	joystickPanAngle = 0;
+	joystickTiltAngle = 0;
 
 }
 
@@ -63,26 +68,37 @@ void pantilt_joystick_deinit(void) {
   */
 void pantilt_joystick_run(void) {
 
-	int panAngle = ((s4435360_hal_joystick_x_read()/4096.0) * 170) - 85;
-	int tiltAngle = ((s4435360_hal_joystick_y_read()/4096.0) * 170) - 80;
+	int newPanAngle = ((s4435360_hal_joystick_x_read()/4096.0) * 170) - 85;
+	int newTiltAngle = ((s4435360_hal_joystick_y_read()/4096.0) * 170) - 80;
 
 	//Remove noise
-	if((panAngle < DENOISING_TOLERANCE) &&
-			(panAngle > -1 * DENOISING_TOLERANCE)) {
-		panAngle = 0;
+	if((newPanAngle < DENOISING_TOLERANCE) &&
+			(newPanAngle > -1 * DENOISING_TOLERANCE)) {
+		newPanAngle = 0;
 
-	} else if((tiltAngle < DENOISING_TOLERANCE) &&
-			(tiltAngle > -1 * DENOISING_TOLERANCE)) {
-		tiltAngle = 0;
+	} else if((newTiltAngle < DENOISING_TOLERANCE) &&
+			(newTiltAngle > -1 * DENOISING_TOLERANCE)) {
+		newTiltAngle = 0;
 	}
 
-	s4435360_hal_pantilt_pan_write(-1 * panAngle);
-	s4435360_hal_pantilt_tilt_write(tiltAngle);
+	//s4435360_hal_pantilt_pan_write(-1 * newPanAngle);
+	//s4435360_hal_pantilt_tilt_write(newTiltAngle);
 
+	for(int i = 0; i < 10; i++) {
+		s4435360_hal_pantilt_tilt_write((((newTiltAngle - joystickTiltAngle) * i) / 10) + joystickTiltAngle);
+		s4435360_hal_pantilt_pan_write(-1 * ((((newPanAngle - joystickPanAngle) * i) / 10) + joystickPanAngle));
+		HAL_Delay(10);
+	}
+
+	joystickPanAngle = newPanAngle;
+	joystickTiltAngle = newTiltAngle;
+
+
+	//Print current angles
 	if(anglePrintingFlag) {
 		debug_printf("Pan:  %d Tilt:  %d\r\n",
-				panAngle,
-				tiltAngle);
+				-1 * joystickPanAngle,
+				joystickTiltAngle);
 		anglePrintingFlag = 0;
 	}
 }

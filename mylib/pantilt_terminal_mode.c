@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
-  * @file    project1/pantilt_terminal_mode.c
-  * @author  SE
+  * @file    proj1/pantilt_terminal_mode.c
+  * @author  Samuel Eadie - 44353607
   * @date    21032018-18042018
   * @brief   Pantilt terminal mode functionality for project 1
   ******************************************************************************
@@ -24,7 +24,7 @@ int panAngle = 0, tiltAngle = 0;
  * @retval None
  */
 void pantilt_terminal_init(void) {
-	debug_printf("Pantilt terminal mode\r\n");
+	debug_printf("Mode 2: Pantilt Terminal\r\n");
 
 	//Initialises 1s printing timer
 	__TIMER1_CLK_ENABLE();
@@ -67,7 +67,7 @@ void pantilt_terminal_deinit(void) {
  */
 void pantilt_terminal_run(void) {
 
-	//Print every 1s
+	//Print current angles every 1s
 	if(printFlag) {
 		debug_printf("Pan:  %d Tilt:  %d\r\n",
 					panAngle, tiltAngle);
@@ -83,24 +83,27 @@ void pantilt_terminal_run(void) {
  */
 void pantilt_terminal_user_input(char* userChars, int userCharsReceived) {
 
+	int newPanAngle = panAngle;
+	int newTiltAngle = tiltAngle;
+
 	/* Process all valid WASD in user input */
 	for(int i = 0; i < userCharsReceived; i++) {
 		switch(userChars[i]) {
 
 			case 'A':
-				panAngle += 5;
+				newPanAngle += 5;
 				break;
 
 			case 'D':
-				panAngle -= 5;
+				newPanAngle -= 5;
 				break;
 
 			case 'W':
-				tiltAngle += 5;
+				newTiltAngle += 5;
 				break;
 
 			case 'S':
-				tiltAngle -= 5;
+				newTiltAngle -= 5;
 				break;
 
 			default:
@@ -109,15 +112,24 @@ void pantilt_terminal_user_input(char* userChars, int userCharsReceived) {
 	}
 
 	//Confine angle to +-85
-	tiltAngle = tiltAngle > 85 ? 85 : tiltAngle;
-	tiltAngle = tiltAngle < -85 ? -85 : tiltAngle;
+	newTiltAngle = newTiltAngle > 85 ? 85 : newTiltAngle;
+	newTiltAngle = newTiltAngle < -85 ? -85 : newTiltAngle;
 
-	panAngle = panAngle > 85 ? 85 : panAngle;
-	panAngle = panAngle < -85 ? -85 : panAngle;
+	newPanAngle = newPanAngle > 85 ? 85 : newPanAngle;
+	newPanAngle = newPanAngle < -85 ? -85 : newPanAngle;
+
+	for(int i = 0; i < 10; i++) {
+		s4435360_hal_pantilt_tilt_write((((newTiltAngle - tiltAngle) * i) / 10) + tiltAngle);
+		s4435360_hal_pantilt_pan_write((((newPanAngle - panAngle) * i) / 10) + panAngle);
+		HAL_Delay(10);
+	}
 
 	//Write net change to pantilt
-	s4435360_hal_pantilt_tilt_write(tiltAngle);
-	s4435360_hal_pantilt_pan_write(panAngle);
+	//s4435360_hal_pantilt_tilt_write(tiltAngle);
+	//s4435360_hal_pantilt_pan_write(panAngle);
+
+	tiltAngle = newTiltAngle;
+	panAngle = newPanAngle;
 }
 
 /**

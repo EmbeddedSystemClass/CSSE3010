@@ -1,10 +1,11 @@
-/*
- * pantilt_joystick_mode.h
- *
- *  Created on: 27Mar.,2018
- *      Author: Sam Eadie
- */
-
+/**
+  ******************************************************************************
+  * @file    proj1/pantilt_joystick_mode.h
+  * @author  Samuel Eadie - 44353607
+  * @date    21032018-18042018
+  * @brief   Provides pantilt joystick mode functionality for project 1
+  ******************************************************************************
+  */
 #ifndef PANTILT_JOYSTICK_MODE_H_
 #define PANTILT_JOYSTICK_MODE_H_
 

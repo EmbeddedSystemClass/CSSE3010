@@ -3,7 +3,7 @@
  * @file    mylib/s4435360_hal_hamming.h
  * @author  Samuel Eadie - 44353607
  * @date    25032018
- * @brief   Provides hamming functionality
+ * @brief   Provides hamming encode/decode functionality
  ******************************************************************************
  */
 

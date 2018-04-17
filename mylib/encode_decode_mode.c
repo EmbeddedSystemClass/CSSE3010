@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
-  * @file    project1/encode_decode_mode.c
-  * @author  SE
+  * @file    proj1/encode_decode_mode.c
+  * @author  Samuel Eadie - 44353607
   * @date    21032018-18042018
   * @brief   Encode decode mode functionality for project 1
   ******************************************************************************
@@ -23,12 +23,17 @@ uint16_t toDecode = 0x0000;
   * @retval the converted hex value
   */
 int char_to_hex(char input) {
+
+	//If number
 	if((input >= '0') && (input <= '9')) {
 		return input - '0';
+
+	//If letter
 	} else if((input >= 'A') && (input <= 'F')) {
 		return input - 'A' + 10;
+
+	//Error
 	} else {
-		//Error
 		return 0xFF;
 	}
 }
@@ -49,7 +54,7 @@ int is_char_valid(char input) {
   * @retval None
   */
 void encode_decode_init(void) {
-	debug_printf("Manchester encode/decode mode\r\n");
+	debug_printf("Mode 4: Encode/Decode\r\n");
 	toEncode = 0x00;
 	toDecode = 0x0000;
 }
@@ -115,7 +120,7 @@ void encode_decode_user_input(char* userChars, int userCharsReceived) {
 
 				toEncode = (char_to_hex(userChars[2]) << 4) |
 						(char_to_hex(userChars[3]));
-				debug_printf("%X\r\n", hamming_byte_encoder(toEncode));
+				debug_printf("%X --> %X\r\n", toEncode, hamming_byte_encoder(toEncode));
 
 			/* Decode Mode */
 			} else if(userChars[1] == 'D') {
@@ -132,7 +137,8 @@ void encode_decode_user_input(char* userChars, int userCharsReceived) {
 				if(output.uncorrectableError) {
 					debug_printf("2-bit ERROR\r\n");
 				} else {
-					debug_printf("%X (Full: %X ErrMask: %04X)\r\n",
+					debug_printf("%X --> %X (Full: %X ErrMask: %04X)\r\n",
+							toDecode,
 							output.decodedOutput,
 							output.fullDecodedOutput,
 							output.errorMask);
@@ -141,7 +147,7 @@ void encode_decode_user_input(char* userChars, int userCharsReceived) {
 	}
 }
 
-/* Timer functionality not used*/
+/* Timer functionality not used */
 void encode_decode_timer1_handler(void){}
 void encode_decode_timer2_handler(void){}
 void encode_decode_timer3_handler(void){}

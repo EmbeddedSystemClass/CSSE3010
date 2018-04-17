@@ -1,10 +1,11 @@
-/*
- * idle_mode.h
- *
- *  Created on: 27Mar.,2018
- *      Author: Sam Eadie
- */
-
+/**
+  ******************************************************************************
+  * @file    proj1/idle_mode.h
+  * @author  Samuel Eadie - 44353607
+  * @date    21032018-18042018
+  * @brief   Provides idle mode functionality for project 1
+  ******************************************************************************
+  */
 #ifndef IDLE_MODE_H
 #define IDLE_MODE_H
 

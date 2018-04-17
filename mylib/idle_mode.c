@@ -1,12 +1,11 @@
 /**
   ******************************************************************************
-  * @file    project1/idle_mode.c
-  * @author  SE
+  * @file    proj1/idle_mode.c
+  * @author  Samuel Eadie - 44353607
   * @date    21032018-18042018
-  * @brief   Idle mode functionality for project 1
+  * @brief   Provides idle mode functionality for project 1
   ******************************************************************************
   */
-
 /* Includes ------------------------------------------------------------------*/
 #include "structures.h"
 
@@ -16,7 +15,7 @@
  * @retval None
  */
 void idle_init(void) {
-	debug_printf("Idle mode\r\n");
+	debug_printf("Mode 1: Idle\r\n");
 }
 
 /**

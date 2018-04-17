@@ -1,13 +1,11 @@
 /**
   ******************************************************************************
-  * @file    project1/integration_speed_mode.c
-  * @author  SE
-  * @date    14032018-21032018
-  * @brief   Variable speed functionality for integration mode for Project 1
+  * @file    proj1/integration_speed.c
+  * @author  Samuel Eadie - 44353607
+  * @date    21032018-18042018
+  * @brief   Provides variable speed mode functionality for project 1
   ******************************************************************************
-  *
   */
-
 /* Includes ------------------------------------------------------------------*/
 #include "string.h"
 #include "structures.h"
@@ -33,15 +31,15 @@
 #define BLAST_LETTER 					'a'
 #define STARTING_TRANSMIT_BIT 			38
 #define HAMMING_PAYLOAD_HEADER_BITS 	0x1400000002
-#define MAX_TX_ERROR					10
+#define MAX_TX_ERROR					5
 #define MAX_TX_RATE						1000
 #define MIN_TX_RATE						5
-#define TX_RATE_MULTIPLIER				2
+#define TX_RATE_MULTIPLIER				1.2
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 //Transmit constants
-unsigned char speedTxAddress[5] = {0x98, 0x24, 0x32, 0x44, 0x00}; //{0x52, 0x33, 0x22, 0x11, 0x00};
+unsigned char speedTxAddress[5] = {0x52, 0x33, 0x22, 0x11, 0x00};
 unsigned char speedRxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
 unsigned char speedChannel = 52;
 unsigned char errorPacketHeader[10] = {0xA1,	//Packet type
@@ -51,9 +49,12 @@ unsigned char errorPacketHeader[10] = {0xA1,	//Packet type
 
 //Integration speed variables
 int charBlastOn = 0;
-uint8_t txErrors = 0, rxErrors = 0;
+int txErrorsLastSecond = 0;
+int rxErrorsLastSecond = 0;
+int rxErrorsLastTen = 0;
+int packetsSentLastSecond = 0;
 uint16_t txRate, rxRate;
-int packetsReceived = 0, packetsSent = 0;
+uint64_t packetsReceived = 0, packetsSent = 0;
 int receivedRadioPacket = 0;
 
 //Transmit hamming packet variables
@@ -71,7 +72,7 @@ void form_error_packet(unsigned char* packet) {
 
 	/* Create payload */
 	char payload[11];
-	sprintf(payload, "Errors%5d", rxErrors);
+	sprintf(payload, "Errors%5d", rxErrorsLastSecond);
 
 	/* Encode and add payload */
 	uint16_t encodedByte;
@@ -80,8 +81,6 @@ void form_error_packet(unsigned char* packet) {
 		packet[PAYLOAD_STARTING_INDEX + (2 * i)] = (uint8_t)((encodedByte & 0xFF00) >> 8);
 		packet[PAYLOAD_STARTING_INDEX + (2 * i) + 1] = (uint8_t)(encodedByte & 0x00FF);
 	}
-
-	//memcpy(&packet[PAYLOAD_STARTING_INDEX], payload, 12);
 }
 
 /**
@@ -124,6 +123,10 @@ void send_hamming_char(char toTransmit) {
 	//Form transmit packet
 	transmitBits = HAMMING_PAYLOAD_HEADER_BITS | ((uint64_t)manchesterEncoded1 << 18) | ((uint64_t)manchesterEncoded2 << 2);
 
+	if(packetsSent % 3 == 0) {
+		transmitBits ^= (1 << 20) ^ (1 << 21) ^ (1 << 4) ^ (1 << 9);
+	}
+
 	//Transmit packet
 	configure_transmission(transmitBits, STARTING_TRANSMIT_BIT, 50000 / txRate);
 	currentlyTransmitting = 1;
@@ -131,8 +134,6 @@ void send_hamming_char(char toTransmit) {
 	while(currentlyTransmitting) {}
 	s4435360_hal_ir_carrier_off();
 	HAL_Delay(10);
-
-	debug_printf("Sent from IR: %c\r\n", toTransmit);
 }
 
 /**
@@ -141,25 +142,21 @@ void send_hamming_char(char toTransmit) {
  * @retval None
  */
 void hamming_char_handler(uint16_t capture) {
-	HammingDecodedOutput output = hamming_byte_decoder(capture);
+	HammingDecodedOutput output = hamming_byte_decoder(flip_hamming(capture));
 
 	//Two bit error
 	if(output.uncorrectableError) {
-		rxErrors += 2;
+		rxErrorsLastSecond += 2;
+		rxErrorsLastTen += 2;
 
 	//One bit error
 	} else if(output.errorMask) {
-		rxErrors++;
+		rxErrorsLastSecond++;
+		rxErrorsLastTen++;
 	}
-	//Received valid char
-	//} else {
-		debug_printf("Received from IR: %X -> %c\r\n", output.fullDecodedOutput, output.decodedOutput);
-	//}
 
 	packetsReceived++;
 	rxRate = PERIOD_REGISTER_TIME_SCALAR / receivePeriod;
-	debug_printf("Receive Rate: %d\r\n", rxRate);
-
 }
 
 /**
@@ -169,7 +166,7 @@ void hamming_char_handler(uint16_t capture) {
  */
 void integration_speed_init(void) {
 
-	debug_printf("Integration Speed mode\r\n");
+	debug_printf("Mode 8: IR Auto Speed\r\n");
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
 	__TIMER2_CLK_ENABLE();
@@ -219,6 +216,11 @@ void integration_speed_init(void) {
 	receivedRadioPacket = 0;
 	configure_receive(16, &hamming_char_handler);
 
+	txErrorsLastSecond = 0;
+	rxErrorsLastSecond = 0;
+	rxErrorsLastTen = 0;
+	packetsSentLastSecond = 0;
+
 }
 
 /**
@@ -255,13 +257,12 @@ void integration_speed_run(void) {
 			form_error_packet(s4435360_tx_buffer);
 			s4435360_radio_sendpacket(speedChannel,  speedTxAddress, s4435360_tx_buffer);
 
-			debug_printf("SENT ERROR PACKET\r\n");
-
-
 			//Reset packet
 			s4435360_radio_txstatus = 0;
 			memset(&s4435360_tx_buffer[0], 0, sizeof(s4435360_tx_buffer));
 
+			rxErrorsLastSecond = 0;
+			txErrorsLastSecond = 0;
 			lightbar_seg_set(SEND_INDICATOR_SEGMENT, 1);
 		}
 	}
@@ -269,8 +270,6 @@ void integration_speed_run(void) {
 	/* Check for received packet */
 	if(s4435360_radio_getrxstatus()) {
 		s4435360_radio_getpacket(s4435360_rx_buffer);
-
-		debug_printf("RECEIVED ERROR PACKET\r\n");
 
 		unsigned char decodedOutput[11];
 		HammingDecodedOutput hammingOutput;
@@ -300,12 +299,12 @@ void integration_speed_run(void) {
 		}
 
 		//Calculate tx errors
-		txErrors = 0;
+		txErrorsLastSecond = 0;
 		for(int i = 0; i < 4; i++) {
-			txErrors *= 10;
+			txErrorsLastSecond *= 10;
 
 			if(s4435360_rx_buffer[TX_ERROR_STARTING_INDEX + i] != SPACE_CHAR) {
-				txErrors += (s4435360_rx_buffer[TX_ERROR_STARTING_INDEX + i] - '0');
+				txErrorsLastSecond += (s4435360_rx_buffer[TX_ERROR_STARTING_INDEX + i] - '0');
 			}
 
 		}
@@ -318,18 +317,19 @@ void integration_speed_run(void) {
 	}
 
 	//Prints information every 10 packets sent/received
-	if(packetsReceived + packetsSent >= 10) {
+	if(packetsReceived + packetsSent % 10 == 0) {
 		debug_printf("Tx Rate: %d Rx Rate: %d\r\nTx Errs: %d Rx Errs: %d\r\n",
 				txRate, PERIOD_REGISTER_TIME_SCALAR / receivePeriod,
-				txErrors, rxErrors);
-		packetsReceived = 0;
-		packetsSent = 0;
+				txErrorsLastSecond, rxErrorsLastTen);
+		rxErrorsLastTen = 0;
+
 	}
 
 	//Send character
 	if(!currentlyTransmitting) {
 		send_hamming_char(BLAST_LETTER);
 		packetsSent++;
+		packetsSentLastSecond++;
 		lightbar_seg_set(SEND_INDICATOR_SEGMENT, 1);
 	}
 }
@@ -345,7 +345,6 @@ void integration_speed_user_input(char* userChars, int userCharsReceived) {
 	//Toggle charBlastOn mode
 	charBlastOn = 1 - charBlastOn;
 }
-
 
 /**
  * @brief Handler for timer 2, radio fsm processing
@@ -365,7 +364,6 @@ void integration_speed_timer1_handler(void) {
 	ir_duplex_timer1_handler();
 }
 
-
 /**
  * @brief Handler for timer 3, 1s timer
  * @param None
@@ -383,20 +381,19 @@ void integration_speed_timer3_handler(void){
 
 	//If received no packet
 	if(!receivedRadioPacket) {
-		txErrors = packetsSent;
+		txErrorsLastSecond = packetsSentLastSecond;
+		packetsSentLastSecond = 0;
 	}
+
+	if(txErrorsLastSecond > MAX_TX_ERROR) {
+			txRate /= TX_RATE_MULTIPLIER;
+		} else {
+			txRate *= TX_RATE_MULTIPLIER;
+		}
+
+		//Confine txRate between MIN_TX_RATE and MAX_TX_RATE
+		txRate = txRate > MAX_TX_RATE ? MAX_TX_RATE : txRate;
+		txRate = txRate < MIN_TX_RATE ? MIN_TX_RATE : txRate;
 
 	receivedRadioPacket = 0;
-
-	if(txErrors > MAX_TX_ERROR) {
-		txRate /= TX_RATE_MULTIPLIER;
-		debug_printf("TX rate halved\r\n");
-	} else {
-		txRate *= TX_RATE_MULTIPLIER;
-		debug_printf("TX rate doubled\r\n");
-	}
-
-	//Confine txRate between MIN_TX_RATE and MAX_TX_RATE
-	txRate = txRate > MAX_TX_RATE ? MAX_TX_RATE : txRate;
-	txRate = txRate < MIN_TX_RATE ? MIN_TX_RATE : txRate;
 }

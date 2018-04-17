@@ -1,10 +1,11 @@
-/*
- * integration_duplex_mode.h
- *
- *  Created on: 27Mar.,2018
- *      Author: Sam Eadie
- */
-
+/**
+  ******************************************************************************
+  * @file    proj1/integration_duplex.h
+  * @author  Samuel Eadie - 44353607
+  * @date    21032018-18042018
+  * @brief   Provides integration duplex mode functionality for project 1
+  ******************************************************************************
+  */
 #ifndef INTEGRATION_DUPLEX_MODE_H_
 #define INTEGRATION_DUPLEX_MODE_H_
 

@@ -27,9 +27,10 @@
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-/* Private function prototypes -----------------------------------------------*/
 int heartbeatCounter = 0;
 int heartBeatValue = 0;
+/* Private function prototypes -----------------------------------------------*/
+void hardware_init(void);
 
 /* Functionality structs for modes */
 ModeFunctions idleModeFunctions = {.modeID = 0x00,
@@ -124,8 +125,8 @@ void print_help_information(void) {
 	debug_printf("4 Encode/Decode\r\n");
 	debug_printf("5 IR Duplex\r\n");
 	debug_printf("6 Radio Duplex\r\n");
-	debug_printf("7 Integration Duplex\r\n");
-	debug_printf("8 Integration Speed\r\n");
+	debug_printf("7 Full Duplex\r\n");
+	debug_printf("8 IR Auto Speed\r\n");
 	debug_printf("\r\n");
 }
 
@@ -211,15 +212,7 @@ void update_heartbeat(void) {
 
 void main(void) {
 
-	/* Initialise hardware */
-	BRD_init();
-	BRD_LEDInit();
-	s4435360_hal_ir_init();
-	s4435360_hal_joystick_init();
-	s4435360_lightbar_init();
-	s4435360_hal_pantilt_init();
-	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-	s4435360_radio_init();
+	hardware_init();
 
 	currentModeFunctions = idleModeFunctions;
 	s4435360_lightbar_write(0x00);
@@ -300,8 +293,24 @@ void main(void) {
 		(*currentModeFunctions.run)();
 
 		update_heartbeat();
-		HAL_Delay(100);
+		HAL_Delay(50);
 	}
+}
+
+/**
+ * @brief Initialises hardware for project
+ * @param None
+ * @retval None
+ */
+void hardware_init(void) {
+	BRD_init();
+	BRD_LEDInit();
+	s4435360_hal_ir_init();
+	s4435360_hal_joystick_init();
+	s4435360_lightbar_init();
+	s4435360_hal_pantilt_init();
+	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+	s4435360_radio_init();
 }
 
 /**

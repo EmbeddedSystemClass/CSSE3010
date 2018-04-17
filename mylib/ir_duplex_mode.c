@@ -1,12 +1,11 @@
 /**
   ******************************************************************************
-  * @file    project1/ir_duplex_mode.c
-  * @author  SE
+  * @file    proj1/ir_duplex_mode.c
+  * @author  Samuel Eadie - 44353607
   * @date    21032018-18042018
-  * @brief   Encode decode mode functionality for project 1
+  * @brief   Provides IR duplex mode functionality for project 1
   ******************************************************************************
   */
-
 /* Includes ------------------------------------------------------------------*/
 #include <s4435360_hal_ircomms.h>
 #include "structures.h"
@@ -127,7 +126,7 @@ void send_string(char* string, int numChars) {
   * @retval None
   */
 void ir_duplex_init(void) {
-	debug_printf("IR duplex mode\r\n");
+	debug_printf("Mode 5: IR Duplex\r\n");
 	ir_timer1_init();
 
 	//Configure IR receive
