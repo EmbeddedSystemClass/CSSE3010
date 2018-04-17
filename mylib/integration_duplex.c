@@ -31,7 +31,7 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 //TX packet constants
-unsigned char duplexTxAddress[5] = {0x52, 0x33, 0x22, 0x11, 0x00};
+unsigned char duplexTxAddress[5] = {0x98, 0x24, 0x32, 0x44, 0x00}; //{0x52, 0x33, 0x22, 0x11, 0x00};{0x52, 0x33, 0x22, 0x11, 0x00};
 unsigned char duplexRxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
 unsigned char duplexChannel = 52;
 
@@ -48,6 +48,24 @@ int duplexRetransmitAttempts = 0;
 int duplexTimerCounter = 0;
 /* Private function prototypes -----------------------------------------------*/
 void start_ACK_timer3(void);
+
+
+/**
+ * @brief Handles received characters from input capture
+ * @param input: the received characters
+ * @retval None
+ */
+void handle_received_ack(uint16_t input) {
+
+	char rxInput = (char)(input);
+
+	if((rxInput == ACK_CHAR) || (rxInput == NACK_CHAR)) {
+		rxChar = rxInput;
+		receivedChar = 1;
+	}
+
+}
+
 
 /**
  * @brief Initialises the duplex functionality for integration challenge
@@ -85,6 +103,8 @@ void integration_duplex_init(void) {
 
 
 	ir_rx_init();
+	configure_receive(8, &handle_received_ack);
+
 	ir_timer1_init();
 
 	//Init flags
@@ -114,6 +134,7 @@ void integration_duplex_deinit(void) {
 void integration_duplex_run(void) {
 
 	lightbar_seg_set(RECEIVE_INDICATOR_SEGMENT, 0);
+	lightbar_seg_set(SEND_INDICATOR_SEGMENT, 0);
 
 	/* Check for transmission */
 	if(s4435360_radio_gettxstatus()) {
@@ -147,7 +168,6 @@ void integration_duplex_run(void) {
 
 	/* Check for received packet */
 	if(s4435360_radio_getrxstatus()) {
-		debug_printf("RX STATUS\r\n");
 
 		s4435360_radio_getpacket(s4435360_rx_buffer);
 
@@ -287,6 +307,10 @@ void integration_duplex_timer3_handler(void) {
 
 	//If received ACK or too many retransmits, stop
 	if(duplexReceivedACK || (duplexRetransmitAttempts >= 2)) {
+		if(duplexRetransmitAttempts >= 2) {
+			debug_printf("After 3 transmits giving up\r\n");
+		}
+
 		duplexReceivedACK = 0;
 		duplexRetransmitAttempts = 0;
 		HAL_TIM_Base_Stop_IT(&timer3Init);

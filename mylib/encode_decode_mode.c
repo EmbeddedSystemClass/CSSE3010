@@ -8,9 +8,9 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include <s4435360_hal_ircomms.h>
 #include "structures.h"
 #include "encode_decode_mode.h"
-#include "s4435360_hal_manchester.h"
 #include "s4435360_hal_hamming.h"
 
 //User chars to encode or decode

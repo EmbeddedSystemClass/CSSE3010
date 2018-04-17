@@ -9,8 +9,7 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include <s4435360_hal_manchester.h>
-
+#include <s4435360_hal_ircomms.h>
 #include "debug_printf.h"
 #include "stm32f4xx_hal_conf.h"
 #include "board.h"

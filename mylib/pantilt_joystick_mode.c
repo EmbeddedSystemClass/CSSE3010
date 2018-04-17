@@ -13,6 +13,8 @@
 #include "s4435360_hal_pantilt.h"
 #include "s4435360_hal_joystick.h"
 
+#define DENOISING_TOLERANCE 5
+
 //Print flag
 int anglePrintingFlag = 0;
 
@@ -50,6 +52,8 @@ void pantilt_joystick_init(void) {
   */
 void pantilt_joystick_deinit(void) {
 	HAL_TIM_Base_Stop_IT(&timer1Init);
+	s4435360_hal_pantilt_tilt_write(0);
+	s4435360_hal_pantilt_pan_write(0);
 }
 
 /**
@@ -60,19 +64,20 @@ void pantilt_joystick_deinit(void) {
 void pantilt_joystick_run(void) {
 
 	int panAngle = ((s4435360_hal_joystick_x_read()/4096.0) * 170) - 85;
-	int tiltAngle = ((s4435360_hal_joystick_y_read()/4096.0) * 170) - 85;
+	int tiltAngle = ((s4435360_hal_joystick_y_read()/4096.0) * 170) - 80;
 
-	if((panAngle < 5) || (panAngle > -5)) {
-		s4435360_hal_pantilt_pan_write(0);
-	} else {
-		s4435360_hal_pantilt_pan_write(-1 * panAngle);
+	//Remove noise
+	if((panAngle < DENOISING_TOLERANCE) &&
+			(panAngle > -1 * DENOISING_TOLERANCE)) {
+		panAngle = 0;
+
+	} else if((tiltAngle < DENOISING_TOLERANCE) &&
+			(tiltAngle > -1 * DENOISING_TOLERANCE)) {
+		tiltAngle = 0;
 	}
 
-	if((tiltAngle < 5) || (tiltAngle > -5)) {
-		s4435360_hal_pantilt_tilt_write(0);
-	} else {
-		s4435360_hal_pantilt_tilt_write(tiltAngle);
-	}
+	s4435360_hal_pantilt_pan_write(-1 * panAngle);
+	s4435360_hal_pantilt_tilt_write(tiltAngle);
 
 	if(anglePrintingFlag) {
 		debug_printf("Pan:  %d Tilt:  %d\r\n",

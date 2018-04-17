@@ -56,6 +56,8 @@ void pantilt_terminal_init(void) {
  */
 void pantilt_terminal_deinit(void) {
 	HAL_TIM_Base_Stop_IT(&timer1Init);
+	s4435360_hal_pantilt_tilt_write(0);
+	s4435360_hal_pantilt_pan_write(0);
 }
 
 /**
@@ -106,19 +108,16 @@ void pantilt_terminal_user_input(char* userChars, int userCharsReceived) {
 		}
 	}
 
-	//Remove jitter
-	if((tiltAngle < 5) || (tiltAngle > -5)) {
-		s4435360_hal_pantilt_tilt_write(0);
-	} else {
-		s4435360_hal_pantilt_tilt_write(tiltAngle);
-	}
+	//Confine angle to +-85
+	tiltAngle = tiltAngle > 85 ? 85 : tiltAngle;
+	tiltAngle = tiltAngle < -85 ? -85 : tiltAngle;
 
-	//Remove jitter
-	if((panAngle < 5) || (panAngle > -5)) {
-		s4435360_hal_pantilt_pan_write(0);
-	} else {
-		s4435360_hal_pantilt_pan_write(panAngle);
-	}
+	panAngle = panAngle > 85 ? 85 : panAngle;
+	panAngle = panAngle < -85 ? -85 : panAngle;
+
+	//Write net change to pantilt
+	s4435360_hal_pantilt_tilt_write(tiltAngle);
+	s4435360_hal_pantilt_pan_write(panAngle);
 }
 
 /**

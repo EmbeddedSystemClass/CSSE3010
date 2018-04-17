@@ -24,7 +24,7 @@
 #define PACKET_READY_TO_SEND		1
 #define PACKET_NOT_READY_TO_SEND	0
 
-unsigned char txAddress[5] = {0x52, 0x33, 0x22, 0x11, 0x00};
+unsigned char txAddress[5] = {0x98, 0x24, 0x32, 0x44, 0x00}; //{0x52, 0x33, 0x22, 0x11, 0x00};
 unsigned char rxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
 unsigned char channel = 52;
 unsigned char packetHeader[10] = {0xA1,					//Packet type
@@ -349,6 +349,9 @@ void radio_duplex_timer1_handler(void) {
 
 	//If received ACK or too many retransmits, stop
 	if(receivedACK || (retransmitAttempts >= 2)) {
+		if(!receivedACK) {
+			debug_printf("After 3 transmits giving up\r\n");
+		}
 		receivedACK = 0;
 		retransmitAttempts = 0;
 		HAL_TIM_Base_Stop_IT(&timer1Init);

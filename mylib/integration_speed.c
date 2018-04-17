@@ -34,14 +34,14 @@
 #define STARTING_TRANSMIT_BIT 			38
 #define HAMMING_PAYLOAD_HEADER_BITS 	0x1400000002
 #define MAX_TX_ERROR					10
-#define MAX_TX_RATE						5
-#define MIN_TX_RATE						1000
+#define MAX_TX_RATE						1000
+#define MIN_TX_RATE						5
 #define TX_RATE_MULTIPLIER				2
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 //Transmit constants
-unsigned char speedTxAddress[5] = {0x52, 0x33, 0x22, 0x11, 0x00};
+unsigned char speedTxAddress[5] = {0x98, 0x24, 0x32, 0x44, 0x00}; //{0x52, 0x33, 0x22, 0x11, 0x00};
 unsigned char speedRxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
 unsigned char speedChannel = 52;
 unsigned char errorPacketHeader[10] = {0xA1,	//Packet type
@@ -70,10 +70,18 @@ void form_error_packet(unsigned char* packet) {
 	memcpy(packet, errorPacketHeader, PAYLOAD_STARTING_INDEX);
 
 	/* Create payload */
-	char payload[22];
-	sprintf(payload, "Errors %3d\r\nErrors %3d", txErrors, rxErrors);
+	char payload[11];
+	sprintf(payload, "Errors%5d", rxErrors);
 
-	memcpy(&packet[PAYLOAD_STARTING_INDEX], payload, 22);
+	/* Encode and add payload */
+	uint16_t encodedByte;
+	for(int i = 0; i < 11; i++) {
+		encodedByte = hamming_byte_encoder(payload[i]);
+		packet[PAYLOAD_STARTING_INDEX + (2 * i)] = (uint8_t)((encodedByte & 0xFF00) >> 8);
+		packet[PAYLOAD_STARTING_INDEX + (2 * i) + 1] = (uint8_t)(encodedByte & 0x00FF);
+	}
+
+	//memcpy(&packet[PAYLOAD_STARTING_INDEX], payload, 12);
 }
 
 /**
@@ -124,6 +132,7 @@ void send_hamming_char(char toTransmit) {
 	s4435360_hal_ir_carrier_off();
 	HAL_Delay(10);
 
+	debug_printf("Sent from IR: %c\r\n", toTransmit);
 }
 
 /**
@@ -137,17 +146,18 @@ void hamming_char_handler(uint16_t capture) {
 	//Two bit error
 	if(output.uncorrectableError) {
 		rxErrors += 2;
-	}
 
 	//One bit error
-	if(output.errorMask) {
+	} else if(output.errorMask) {
 		rxErrors++;
 	}
+	//Received valid char
+	//} else {
+		debug_printf("Received from IR: %X -> %c\r\n", output.fullDecodedOutput, output.decodedOutput);
+	//}
 
 	packetsReceived++;
-
 	rxRate = PERIOD_REGISTER_TIME_SCALAR / receivePeriod;
-	debug_printf("Received from IR: %c\r\n", output.decodedOutput);
 	debug_printf("Receive Rate: %d\r\n", rxRate);
 
 }
@@ -212,7 +222,7 @@ void integration_speed_init(void) {
 }
 
 /**
- * @brief Deinitialises the duplex functionality for integration challenge
+ * @brief Deinitialises the speed functionality for integration challenge
  * @param None
  * @retval None
  */
@@ -225,7 +235,7 @@ void integration_speed_deinit(void) {
 }
 
 /**
- * @brief The run function for the duplex integration challenge
+ * @brief The run function for the speed integration challenge
  * @param None
  * @retval None
  */
@@ -243,10 +253,13 @@ void integration_speed_run(void) {
 	if(s4435360_radio_gettxstatus()) {
 		if(radio_fsm_getstate() == RADIO_FSM_TX_STATE) {
 			form_error_packet(s4435360_tx_buffer);
+			s4435360_radio_sendpacket(speedChannel,  speedTxAddress, s4435360_tx_buffer);
+
+			debug_printf("SENT ERROR PACKET\r\n");
+
 
 			//Reset packet
 			s4435360_radio_txstatus = 0;
-			s4435360_radio_sendpacket(speedChannel,  speedTxAddress, s4435360_tx_buffer);
 			memset(&s4435360_tx_buffer[0], 0, sizeof(s4435360_tx_buffer));
 
 			lightbar_seg_set(SEND_INDICATOR_SEGMENT, 1);
@@ -257,24 +270,45 @@ void integration_speed_run(void) {
 	if(s4435360_radio_getrxstatus()) {
 		s4435360_radio_getpacket(s4435360_rx_buffer);
 
-		//Calculate tx and rx errors
-		uint16_t txError = 0, rxError = 0;
-		for(int i = 0; i < 3; i++) {
-			txError *= 10;
-			rxError *= 10;
+		debug_printf("RECEIVED ERROR PACKET\r\n");
 
-			if(s4435360_rx_buffer[TX_ERROR_STARTING_INDEX + i] != SPACE_CHAR) {
-				txError += (s4435360_rx_buffer[TX_ERROR_STARTING_INDEX + i] - '0');
+		unsigned char decodedOutput[11];
+		HammingDecodedOutput hammingOutput;
+		memset(&decodedOutput[0], 0, sizeof(decodedOutput));
+
+		int receivedInvalidMessage = 0;
+
+		for(int i = 0; i < 11; i++) {
+			uint16_t encodedDoubleByte = (s4435360_rx_buffer[10 + (2 * i)] << 8) |
+					(s4435360_rx_buffer[10 + (2 * i) + 1]);
+			if(!encodedDoubleByte) {
+				break;
 			}
 
-			if(s4435360_rx_buffer[RX_ERROR_STARTING_INDEX + i] != SPACE_CHAR) {
-				rxError += (s4435360_rx_buffer[RX_ERROR_STARTING_INDEX + i] - '0');
+			hammingOutput = hamming_byte_decoder(encodedDoubleByte);
+
+			//Check for correct decoding
+			if(hammingOutput.uncorrectableError) {
+				receivedInvalidMessage = 1;
+			} else {
+				decodedOutput[i] = hammingOutput.decodedOutput;
+			}
+		}
+
+		if(receivedInvalidMessage) {
+			return;
+		}
+
+		//Calculate tx errors
+		txErrors = 0;
+		for(int i = 0; i < 4; i++) {
+			txErrors *= 10;
+
+			if(s4435360_rx_buffer[TX_ERROR_STARTING_INDEX + i] != SPACE_CHAR) {
+				txErrors += (s4435360_rx_buffer[TX_ERROR_STARTING_INDEX + i] - '0');
 			}
 
 		}
-
-		txErrors = txError;
-		rxErrors = rxError;
 
 		//Reset RX variables
 		receivedRadioPacket = 1;
@@ -288,8 +322,8 @@ void integration_speed_run(void) {
 		debug_printf("Tx Rate: %d Rx Rate: %d\r\nTx Errs: %d Rx Errs: %d\r\n",
 				txRate, PERIOD_REGISTER_TIME_SCALAR / receivePeriod,
 				txErrors, rxErrors);
-		packetsReceived = 0; // %= 10;
-		packetsSent = 0; // %= 10;
+		packetsReceived = 0;
+		packetsSent = 0;
 	}
 
 	//Send character
@@ -301,12 +335,13 @@ void integration_speed_run(void) {
 }
 
 /**
- * @brief The user input function for the integration duplex mode
+ * @brief The user input function for the integration speed mode
  * @param userChars: the chars received from the console
  * 		   userCharsReceived: the number of chars received
  * @retval None
  */
 void integration_speed_user_input(char* userChars, int userCharsReceived) {
+
 	//Toggle charBlastOn mode
 	charBlastOn = 1 - charBlastOn;
 }
@@ -338,6 +373,11 @@ void integration_speed_timer1_handler(void) {
  */
 void integration_speed_timer3_handler(void){
 
+	//Only update speeds and send radio packets during char blast on
+	if(!charBlastOn) {
+		return;
+	}
+
 	//Send radio packet update
 	s4435360_radio_txstatus = 1;
 
@@ -350,8 +390,10 @@ void integration_speed_timer3_handler(void){
 
 	if(txErrors > MAX_TX_ERROR) {
 		txRate /= TX_RATE_MULTIPLIER;
+		debug_printf("TX rate halved\r\n");
 	} else {
 		txRate *= TX_RATE_MULTIPLIER;
+		debug_printf("TX rate doubled\r\n");
 	}
 
 	//Confine txRate between MIN_TX_RATE and MAX_TX_RATE

@@ -8,10 +8,10 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include <s4435360_hal_ircomms.h>
 #include "structures.h"
 #include "ir_duplex_mode.h"
 #include "s4435360_hal_ir.h"
-#include "s4435360_hal_manchester.h"
 #include <string.h>
 
 #define TRANSMIT_HEADER_BITS		(uint64_t)(0b0101000000000000000010)
@@ -46,7 +46,7 @@ int irAckTimerCounter;
 
 /* Receive configuration variables */
 int receiveBitLength;
-(*rxCharHandler)(uint16_t);
+void (*rxCharHandler)(uint16_t);
 
 /**
   * @brief Configures IR transmission
@@ -237,6 +237,7 @@ void ir_rx_init(void) {
 void handle_received_char(uint16_t input) {
 
 	char rxInput = (char)(input);
+	debug_printf("Received char: %c\r\n", rxInput);
 
 	switch(rxInput) {
 
@@ -343,7 +344,6 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 				//Check that stop bit is falling edge
 				if(pinState == GPIO_PIN_SET) {
 					rxCharHandler(captureChar);
-					//debug_printf("Receive period %d\r\n", receivePeriod);
 				}
 				bitsReceived = 0;
 				ir_rx_init();
@@ -515,6 +515,10 @@ void ir_duplex_timer2_handler(void){
 
 	//If received ACK or too many retransmits, stop
 	if(receivedIrAck || (IRretransmitAttempts >= 2)) {
+		if(!receivedIrAck) {
+			debug_printf("After 3 transmits giving up\r\n");
+		}
+
 		receivedIrAck = 0;
 		HAL_TIM_Base_Stop_IT(&timer2Init);
 		txFlag = 0;

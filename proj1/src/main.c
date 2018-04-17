@@ -182,6 +182,7 @@ void change_mode(char mode) {
 
 	//Deinitialises old mode
 	(*currentModeFunctions.deinit)();
+
 	currentModeFunctions = nextModeFunctions;
 
 	//Updates the lighbar segment
