@@ -235,7 +235,6 @@ void ir_rx_init(void) {
 void handle_received_char(uint16_t input) {
 
 	char rxInput = (char)(input);
-	debug_printf("Received char: %c\r\n", rxInput);
 
 	switch(rxInput) {
 

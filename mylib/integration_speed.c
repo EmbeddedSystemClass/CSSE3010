@@ -261,6 +261,10 @@ void integration_speed_run(void) {
 			form_error_packet(s4435360_tx_buffer);
 			s4435360_radio_sendpacket(speedChannel,  speedTxAddress, s4435360_tx_buffer);
 
+			debug_printf("Tx Rate: %d Rx Rate: %d\r\nTx Errs: %d Rx Errs: %d\r\n",
+					txRate, PERIOD_REGISTER_TIME_SCALAR / receivePeriod,
+					txErrorsLastSecond, rxErrorsLastTen);
+
 			//Reset packet
 			s4435360_radio_txstatus = 0;
 			memset(&s4435360_tx_buffer[0], 0, sizeof(s4435360_tx_buffer));
