@@ -119,7 +119,6 @@ void send_string(char* string, int numChars) {
 	lightbar_seg_set(SEND_INDICATOR_SEGMENT, 0);
 }
 
-
 /**
   * @brief Initialises ir duplex mode
   * @param None
@@ -259,6 +258,8 @@ void handle_received_char(uint16_t input) {
 
 			//Add to string
 			if(receivedSTX) {
+
+				//Space in buffer
 				if(irCharsReceived < 11) {
 					rxBuffer[irCharsReceived++] = rxInput;
 				} else {
@@ -285,10 +286,11 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
 	/* Check the triggering timer channel */
 	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4) {
 
-		//Calculate difference in capture values
+		//Record capture compare
 		uint32_t currentCaptureValue = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_4);
 		GPIO_PinState pinState = HAL_GPIO_ReadPin(RX_INPUT_PORT, RX_INPUT_PIN);
 
+		//Calculate compare difference
 		uint32_t captureValueDifference;
 		if (currentCaptureValue > lastCaptureValue) {
 			captureValueDifference = (currentCaptureValue - lastCaptureValue);
@@ -410,9 +412,13 @@ void ir_duplex_run(void) {
 
 	//Check receive char flag
 	if(receivedChar) {
+
+		//Received ACK
 		if(rxChar == ACK_CHAR) {
 			debug_printf("Received from IR: ACK\r\n");
 			receivedIrAck = 1;
+
+		//Received general char
 		} else if (((rxChar >= 'a') && (rxChar <= 'z')) ||
 				((rxChar >= 'A') && (rxChar <= 'Z')) ||
 				(rxChar == SPACE_CHAR)) {

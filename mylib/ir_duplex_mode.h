@@ -9,6 +9,7 @@
 #ifndef IR_DUPLEX_MODE_H_
 #define IR_DUPLEX_MODE_H_
 
+//IR receive flags
 int receivedChar;
 unsigned char rxBuffer[11];
 unsigned char rxChar;

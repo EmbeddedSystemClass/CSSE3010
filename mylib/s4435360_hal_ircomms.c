@@ -1,9 +1,9 @@
 /**
  ******************************************************************************
- * @file    mylib/s4435360_hal_manchester.c
+ * @file    mylib/s4435360_hal_ircomms.c
  * @author  Samuel Eadie - 44353607
  * @date    25032018
- * @brief   Provides manchester encode/decode functionality
+ * @brief   Provides manchester encode/decode functionality for ir comms
  *
  ******************************************************************************
  */

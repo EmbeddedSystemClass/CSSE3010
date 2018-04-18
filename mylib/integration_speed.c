@@ -47,14 +47,18 @@ unsigned char errorPacketHeader[10] = {0xA1,	//Packet type
 		0x07, 0x36, 0x35, 0x44,  				//Source address
 		0x00};
 
-//Integration speed variables
+//IR autospeed on/off mode
 int charBlastOn = 0;
+
+//Error variables
 int txErrorsLastSecond = 0;
 int rxErrorsLastSecond = 0;
 int rxErrorsLastTen = 0;
-int packetsSentLastSecond = 0;
+
+//Send/receive errors
 uint16_t txRate, rxRate;
 uint64_t packetsReceived = 0, packetsSent = 0;
+int packetsSentLastSecond = 0;
 int receivedRadioPacket = 0;
 
 //Transmit hamming packet variables

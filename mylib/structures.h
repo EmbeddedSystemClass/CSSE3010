@@ -12,6 +12,7 @@
 #include "stm32f4xx_hal.h"
 #include "debug_printf.h"
 
+//Mode character definitions
 #define IDLE_CHAR						'1'
 #define PANTILT_TERMINAL_CHAR			'2'
 #define PANTILT_JOYSTICK_CHAR			'3'
@@ -22,9 +23,11 @@
 #define INTEGRATION_SPEED_CHAR 			'8'
 #define HELP_CHAR						'?'
 
+//Macros for user input handling
 #define HANDLED_USER_INPUT				1
 #define UNHANDLED_USER_INPUT			0
 
+//LED lightbar segment definitions
 #define HEARTBEAT_PERIOD 				3
 #define HEARTBEAT_SEGMENT				0
 #define MODE_ID_SEGMENT					1
@@ -33,6 +36,7 @@
 #define ACK_INDICATOR_SEGMENT			6
 #define ERR_INDICATOR_SEGMENT 			7
 
+//Useful character definitions
 #define ENTER_CHAR					(char)(13)
 #define BACKSPACE_CHAR				(char)(8)
 #define SPACE_CHAR					(char)(32)
@@ -44,6 +48,8 @@
 #define QUESTION_CHAR				(char)(63)
 #define MAX_USER_CHARS				13
 
+
+//Three general timers are available to each mode
 #define TIMER1						TIM5
 #define TIMER2						TIM7
 #define TIMER3						TIM6
@@ -57,8 +63,12 @@
 #define TIMER1_HANDLER				TIM5_IRQHandler
 #define TIMER2_HANDLER				TIM7_IRQHandler
 #define TIMER3_HANDLER				TIM6_DAC_IRQHandler
+
+//TIM_HandleTypeDef for generic timers
 TIM_HandleTypeDef timer1Init, timer2Init, timer3Init;
 
+
+//Characterises a mode. Provides generic functionality
 typedef struct {
 
 	uint8_t modeID;
