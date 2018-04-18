@@ -137,7 +137,7 @@ void integration_duplex_run(void) {
 	/* Check for transmission */
 	if(s4435360_radio_gettxstatus()) {
 		if(radio_fsm_getstate() == RADIO_FSM_TX_STATE) {
-			form_packet(duplexUserChars, 11, s4435360_tx_buffer);
+			form_packet(duplexUserChars, duplexUserCharCount, s4435360_tx_buffer);
 
 			//Copy for possible retransmit
 			strcpy(duplexUserCharsRetransmit, duplexUserChars);
@@ -158,7 +158,7 @@ void integration_duplex_run(void) {
 			start_ACK_timer3();
 
 			s4435360_radio_sendpacket(duplexChannel,  duplexTxAddress, s4435360_tx_buffer);
-			memset(&s4435360_tx_buffer[0], 0, sizeof(s4435360_tx_buffer));
+			memset(&s4435360_tx_buffer[0], 0, 32);
 			lightbar_seg_set(SEND_INDICATOR_SEGMENT, 1);
 		}
 	}

@@ -197,7 +197,7 @@ void radio_duplex_run(void) {
 
 			//Send packet - original or retransmission
 			} else {
-				form_packet(radioUserChars, 11, s4435360_tx_buffer);
+				form_packet(radioUserChars, radioUserCharCount, s4435360_tx_buffer);
 				strcpy(radioUserCharsRetransmit, radioUserChars);
 				radioUserCharRetransmitCount = radioUserCharCount;
 				print_sent_packet();
@@ -212,7 +212,8 @@ void radio_duplex_run(void) {
 			}
 
 			s4435360_radio_sendpacket(channel,  txAddress, s4435360_tx_buffer);
-			memset(&s4435360_tx_buffer[0], 0, sizeof(s4435360_tx_buffer));
+			memset(&s4435360_tx_buffer[0], 0, 32);
+			memset(&radioUserChars[0], 0, 11);
 			lightbar_seg_set(SEND_INDICATOR_SEGMENT, 1);
 		}
 	}
