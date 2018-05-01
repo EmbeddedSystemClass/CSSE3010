@@ -1,50 +1,60 @@
 /**
   ******************************************************************************
-  * @file    demo5/main.c
+  * @file    exercise5/main.c
   * @author  SE
-  * @date    27042018
-  * @brief   Demonstrates basic OS functionality for demo 5
+  * @date    02052018
+  * @brief   Demonstrates freeRTOS functionality for exercise 5
   ******************************************************************************
   *
   */
 
-#include <stdio.h>
+#include "board.h"
+#include "stm32f4xx_hal_conf.h"
+#include "debug_printf.h"
+#include <string.h>
 
 /* Scheduler includes. */
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
-#include "board.h"
-#include "debug_printf.h"
-
-#include "s4435360_hal_sysmon.h"
-#include "s4435360_os_joystick.h"
+#include "semphr.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 #define EVER ;;
 
 /* Task stack size definitions */
-#define TASK1_STACK_SIZE		( configMINIMAL_STACK_SIZE * 2 ) //Min 17
+#define TASK1_STACK_SIZE		( configMINIMAL_STACK_SIZE * 2 )
 #define TASK2_STACK_SIZE		( configMINIMAL_STACK_SIZE * 2 )
-#define TASK3_STACK_SIZE		( configMINIMAL_STACK_SIZE * 2 )
 
 /* Task priority definitions*/
 #define TASK1_PRIORITY			( tskIDLE_PRIORITY + 2 )
 #define TASK2_PRIORITY			( tskIDLE_PRIORITY + 2 )
-#define TASK3_PRIORITY			( tskIDLE_PRIORITY + 2 )
 
-/* Delay time definitions */
-#define MAJOR_DELAY_TIME		3
-#define MINOR_DELAY_TIME		1
+/* Exercise definitions */
+#define EXERCISE1_DELAY_TIME		(1 * 1000)
+#define EXERCISE2_DELAY_TIME		(1 * 1000)
+#define EXERCISE2_LETTER			'A'
+#define EXERCISE3_DELAY_TIME		(2 * 1000)
+#define EXERCISE3_LETTER			'B'
+#define EXERCISE4_DELAY_TIME		(3 * 1000)
+#define EXERCISE4_LIVE_TIME			(12 * 1000)
+#define EXERCISE5_LETTER			'C'
 
 #define DEBOUNCE_THRESHOLD		((uint32_t) 100)
+
+#define EXERCISE_1
+#define EXERCISE_2
+#define EXERCISE_3
+#define EXERCISE_4
+#define EXERCISE_5
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 volatile uint32_t lastInterruptTime = 0;
 TaskHandle_t task1Handle, task2Handle, task3Handle;
-int task2Deleted = 0;
+SemaphoreHandle_t exercise1Semaphore;
+QueueHandle_t exercise2Queue, exercise3Queue, exercise5Queue;
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -54,18 +64,47 @@ int task2Deleted = 0;
   * @retval None
   */
 void Task1_Task(void) {
-	s4435360_hal_sysmon_chan0_clr();
-
+	char receivedLetter;
+#ifdef EXERCISE_1
 	for(EVER) {
-		s4435360_hal_sysmon_chan0_set();
-
-		//Perform random task
-		BRD_LEDGreenToggle();
-		vTaskDelay(MAJOR_DELAY_TIME);
-
-		s4435360_hal_sysmon_chan0_clr();
-		vTaskDelay(MINOR_DELAY_TIME);
+		vTaskDelay(EXERCISE1_DELAY_TIME);
+		xSemaphoreGive(exercise1Semaphore);
 	}
+#endif
+
+#ifdef EXERCISE_2
+	char message = EXERCISE2_LETTER;
+	for(EVER) {
+		vTaskDelay(EXERCISE2_DELAY_TIME);
+		xQueueSend(exercise2Queue, ( void * ) &message, ( portTickType ) 200 );
+	}
+#endif
+
+#ifdef EXERCISE_3
+	char letter = EXERCISE3_LETTER;
+	xQueueSend(exercise3Queue, ( void * ) &letter, ( portTickType ) 20000 );
+#endif
+
+#ifdef EXERCISE_4
+	for(EVER) {
+		vTaskDelay(EXERCISE4_DELAY_TIME);
+		portENTER_CRITICAL();
+		debug_printf("Task One is Live\r\n");
+		portEXIT_CRITICAL();
+	}
+
+#endif
+
+#ifdef EXERCISE_5
+	for(EVER) {
+		if(xQueueReceive(exercise5Queue, &receivedLetter, (TickType_t)(1000))) {
+			portENTER_CRITICAL();
+			debug_printf("Received Letter: %c\r\n", receivedLetter);
+			portEXIT_CRITICAL();
+		}
+	}
+#endif
+
 }
 
 /**
@@ -74,57 +113,50 @@ void Task1_Task(void) {
   * @retval None
   */
 void Task2_Task(void) {
-	s4435360_hal_sysmon_chan1_clr();
-
+	char receivedLetter;
+#ifdef EXERCISE_1
 	for(EVER) {
-		s4435360_hal_sysmon_chan1_set();
-
-		//Perform random task
-		BRD_LEDBlueToggle();
-		vTaskDelay(MAJOR_DELAY_TIME);
-
-		s4435360_hal_sysmon_chan1_clr();
-		vTaskDelay(MINOR_DELAY_TIME);
-	}
-}
-
-/**
-  * @brief  Task 3 functionality
-  * @param  None
-  * @retval None
-  */
-void Task3_Task(void) {
-	s4435360_hal_sysmon_chan2_clr();
-
-	for(EVER) {
-		s4435360_hal_sysmon_chan2_set();
-
-		//Perform random task
-		BRD_LEDRedToggle();
-		vTaskDelay(MAJOR_DELAY_TIME);
-
-		s4435360_hal_sysmon_chan2_clr();
-		vTaskDelay(MINOR_DELAY_TIME);
-
-		if(s4435360_SemaphoreJoystickZ != NULL) {
-
-			//Can successfully give if interrupt has taken
-			if(xSemaphoreGive(s4435360_SemaphoreJoystickZ) == pdTRUE) {
-
-				//Handle Task 2 change
-				if(task2Deleted) { //task2Handle == NULL) {
-					xTaskCreate((void *) &Task2_Task, (const char *) "TASK2",
-											TASK2_STACK_SIZE, NULL, TASK2_PRIORITY, &task2Handle);
-					task2Deleted = 0;
-				} else {
-					vTaskDelete(task2Handle);
-					s4435360_hal_sysmon_chan1_clr();
-					task2Deleted = 1;
-				}
-			}
+		if(xSemaphoreTake(exercise1Semaphore, (TickType_t)(10000 / portTICK_PERIOD_MS))) {
+			BRD_LEDRedOn();
+			vTaskDelay(400);
+			BRD_LEDRedOff();
 		}
 	}
+#endif
+
+#ifdef EXERCISE_2
+	for(EVER) {
+		if(xQueueReceive(exercise2Queue, &receivedLetter, (TickType_t)(10000 / portTICK_PERIOD_MS))) {
+			portENTER_CRITICAL();
+			debug_printf("Received Letter: %c\r\n", receivedLetter);
+			portEXIT_CRITICAL();
+		}
+	}
+#endif
+
+#ifdef EXERCISE_3
+	for(EVER) {
+		xQueuePeak(exercise3Queue, &receivedLetter, (TickType_t)(10000 / portTICK_PERIOD_MS));
+		portENTER_CRITICAL();
+		debug_printf("Received Letter: %c\r\n", receivedLetter);
+		portEXIT_CRITICAL();
+		vTaskDelay(EXERCISE3_DELAY_TIME);
+	}
+#endif
+
+#ifdef EXERCISE_4
+	vTaskDelay(EXERCISE4_LIVE_TIME);
+	VTaskDelete(task1Handle);
+	for(EVER);
+#endif
+
+#ifdef EXERCISE_5
+
+#endif
+
+
 }
+
 
 /**
   * @brief  vApplicationStackOverflowHook
@@ -172,21 +204,19 @@ void Hardware_init() {
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
+#ifdef EXERCISE_5
 	uint32_t currentTime = HAL_GetTick();
 	BaseType_t xHigherPriorityTaskWoken;
 
 	/* Debounce button press */
 	if(currentTime - lastInterruptTime >= DEBOUNCE_THRESHOLD) {
-		xHigherPriorityTaskWoken = pdFALSE;
-
-		if(s4435360_SemaphoreJoystickZ != NULL) {
-			xSemaphoreTakeFromISR(s4435360_SemaphoreJoystickZ,
-					&xHigherPriorityTaskWoken);
-		}
+		char message = EXERCISE5_LETTER;
+		xQueueSendfromISR(exercise5Queue, ( void * ) &message, ( portTickType ) 200 );
 	}
 
 	lastInterruptTime = currentTime;
 	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+#endif
 
 }
 
@@ -199,19 +229,41 @@ int main(void) {
 	//Initialise hardware
 	BRD_init();
 	Hardware_init();
-	s4435360_hal_sysmon_init();
-	s4435360_os_joystick_init();
 
+#ifdef EXERCISE_1
+	exercise1Semaphore = xSemaphoreCreateBinary();
+#endif
+
+#ifdef EXERCISE_2
+	exercise2Queue = xQueueCreate(10, sizeof(char));
+#endif
+
+#ifdef EXERCISE_3
+	exercise3Queue = xQueueCreate(10, sizeof(char));
+#endif
+
+#ifdef EXERCISE_4
+
+#endif
+
+#ifdef EXERCISE_5
+
+#endif
 	//Create tasks
 	xTaskCreate((void *) &Task1_Task,
 			(const char *) "TASK1", TASK1_STACK_SIZE,
 			NULL, TASK1_PRIORITY, task1Handle);
+
+#ifdef EXERCISE_5
+	//Start scheduler
+	vTaskStartScheduler();
+
+	return 0;
+#endif
+
 	xTaskCreate((void *) &Task2_Task,
 			(const char *) "TASK2", TASK2_STACK_SIZE,
 			NULL, TASK2_PRIORITY, &task2Handle);
-	xTaskCreate((void *) &Task3_Task,
-			(const char *) "TASK3", TASK3_STACK_SIZE,
-			NULL, TASK3_PRIORITY, &task3Handle);
 
 	//Start scheduler
 	vTaskStartScheduler();

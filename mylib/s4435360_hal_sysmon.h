@@ -11,15 +11,15 @@
 #define S4435360_HAL_SYSMON_H
 
 //Channel definitions
-#define CHANNEL_0_PIN							BRD_D8_PIN
-#define CHANNEL_1_PIN							BRD_D9_PIN
-#define CHANNEL_2_PIN							BRD_D10_PIN
-#define CHANNEL_0_PORT							BRD_D8_GPIO_PORT
-#define CHANNEL_1_PORT							BRD_D9_GPIO_PORT
-#define CHANNEL_2_PORT							BRD_D10_GPIO_PORT
-#define CHANNEL_0_PORT_CLK()					__BRD_D8_GPIO_CLK()
-#define CHANNEL_1_PORT_CLK()					__BRD_D9_GPIO_CLK()
-#define CHANNEL_2_PORT_CLK()					__BRD_D10_GPIO_CLK()
+#define CHANNEL_0_PIN							BRD_D10_PIN
+#define CHANNEL_1_PIN							BRD_D11_PIN
+#define CHANNEL_2_PIN							BRD_D12_PIN
+#define CHANNEL_0_PORT							BRD_D10_GPIO_PORT
+#define CHANNEL_1_PORT							BRD_D11_GPIO_PORT
+#define CHANNEL_2_PORT							BRD_D12_GPIO_PORT
+#define CHANNEL_0_PORT_CLK()					__BRD_D10_GPIO_CLK()
+#define CHANNEL_1_PORT_CLK()					__BRD_D11_GPIO_CLK()
+#define CHANNEL_2_PORT_CLK()					__BRD_D12_GPIO_CLK()
 
 //Set and clear channel functionality
 #define s4435360_hal_sysmon_chan0_clr()			HAL_GPIO_WritePin(CHANNEL_0_PORT, CHANNEL_0_PIN, 0);
