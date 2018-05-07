@@ -107,7 +107,6 @@ void Task2_Task(void) {
 void Task3_Task(void) {
 
 	s4435360_hal_sysmon_chan2_clr();
-	xSemaphoreGive(s4435360_SemaphoreJoystickZ);
 
 	//Infinite loop
 	for(EVER) {
@@ -125,7 +124,7 @@ void Task3_Task(void) {
 		if(s4435360_SemaphoreJoystickZ != NULL) {
 
 			//Can successfully give if interrupt has taken
-			if(xSemaphoreGive(s4435360_SemaphoreJoystickZ) == pdTRUE) {
+			if(xSemaphoreTake(s4435360_SemaphoreJoystickZ, 0) == pdTRUE) {
 
 				//Handle Task 2 change
 				if(task2Handle == NULL) {
@@ -220,7 +219,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		xHigherPriorityTaskWoken = pdFALSE;
 
 		if(s4435360_SemaphoreJoystickZ != NULL) {
-			xSemaphoreTakeFromISR(s4435360_SemaphoreJoystickZ,
+			xSemaphoreGiveFromISR(s4435360_SemaphoreJoystickZ,
 					&xHigherPriorityTaskWoken);
 		}
 	}
@@ -263,7 +262,7 @@ int main(void) {
 	//Create tasks
 	xTaskCreate((void *) &Task1_Task,
 			(const char *) "TASK1", TASK1_STACK_SIZE,
-			NULL, TASK1_PRIORITY, task1Handle);
+			NULL, TASK1_PRIORITY, &task1Handle);
 	xTaskCreate((void *) &Task2_Task,
 			(const char *) "TASK2", TASK2_STACK_SIZE,
 			NULL, TASK2_PRIORITY, &task2Handle);

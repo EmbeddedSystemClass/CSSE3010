@@ -24,30 +24,30 @@
 #define EVER ;;
 
 /* Task stack size definitions */
-#define TASK1_STACK_SIZE		( configMINIMAL_STACK_SIZE * 2 )
-#define TASK2_STACK_SIZE		( configMINIMAL_STACK_SIZE * 2 )
+#define TASK1_STACK_SIZE		( configMINIMAL_STACK_SIZE * 2 * 2 )
+#define TASK2_STACK_SIZE		( configMINIMAL_STACK_SIZE * 2 * 2 )
 
 /* Task priority definitions*/
 #define TASK1_PRIORITY			( tskIDLE_PRIORITY + 2 )
 #define TASK2_PRIORITY			( tskIDLE_PRIORITY + 2 )
 
 /* Exercise definitions */
-#define EXERCISE1_DELAY_TIME		(1 * 1000)
+#define EXERCISE1_DELAY_TIME		(2 * 1000)
 #define EXERCISE2_DELAY_TIME		(1 * 1000)
 #define EXERCISE2_LETTER			'A'
 #define EXERCISE3_DELAY_TIME		(2 * 1000)
 #define EXERCISE3_LETTER			'B'
-#define EXERCISE4_DELAY_TIME		(3 * 1000)
-#define EXERCISE4_LIVE_TIME			(12 * 1000)
+#define EXERCISE4_DELAY_TIME		(2 * 1000)
+#define EXERCISE4_LIVE_TIME			(11 * 1000)
 #define EXERCISE5_LETTER			'C'
 
 #define DEBOUNCE_THRESHOLD		((uint32_t) 100)
 
 #define EXERCISE_1
-#define EXERCISE_2
-#define EXERCISE_3
-#define EXERCISE_4
-#define EXERCISE_5
+//#define EXERCISE_2
+//#define EXERCISE_3
+//#define EXERCISE_4
+//#define EXERCISE_5
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -252,7 +252,7 @@ int main(void) {
 	//Create tasks
 	xTaskCreate((void *) &Task1_Task,
 			(const char *) "TASK1", TASK1_STACK_SIZE,
-			NULL, TASK1_PRIORITY, task1Handle);
+			NULL, TASK1_PRIORITY, &task1Handle);
 
 #ifdef EXERCISE_5
 	//Start scheduler
