@@ -15,6 +15,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include <s4435360_hal_pantilt.h>
 
+#include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_conf.h"
 #include "debug_printf.h"
 #include "board.h"

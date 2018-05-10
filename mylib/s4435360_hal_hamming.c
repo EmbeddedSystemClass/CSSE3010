@@ -200,3 +200,27 @@ HammingDecodedOutput hamming_byte_decoder(uint16_t input) {
 	return output;
 
 }
+
+int hamming_decode_payload(char* decodedBuffer, char* payload, int length) {
+
+	HammingDecodedOutput hammingOutput;
+
+	for(int i = 0; i < length; i++) {
+		uint16_t encodedDoubleByte = (s4435360_rx_buffer[10 + (2 * i)] << 8) |
+				(s4435360_rx_buffer[10 + (2 * i) + 1]);
+		if(!encodedDoubleByte) {
+			break;
+		}
+
+		hammingOutput = hamming_byte_decoder(encodedDoubleByte);
+
+		//Check for correct decoding
+		if(hammingOutput.uncorrectableError) {
+			return 0;
+		} else {
+			decodedBuffer[i] = hammingOutput.decodedOutput;
+		}
+	}
+
+	return 1;
+}

@@ -30,5 +30,6 @@ uint8_t hamming_hbyte_encoder(uint8_t in);
 uint8_t hamming_hbyte_decoder(uint8_t in);
 uint16_t hamming_byte_encoder(uint8_t input);
 HammingDecodedOutput hamming_byte_decoder(uint16_t input);
+int hamming_decode_payload(char* decodedBuffer, char* payload, int length);
 
 #endif
