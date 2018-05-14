@@ -19,6 +19,7 @@
 #include "nrf24l01plus.h"
 #include "assert.h"
 #include "string.h"
+#include "s4435360_os_printf.h"
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -47,11 +48,11 @@ void s4435360_radio_init(void) {
  */
 void s4435360_radio_fsmprocessing() {
 
+	debug_printf("%d\r\n", s4435360_radio_fsmcurrentstate);
 	/* Process current state */
 	switch (s4435360_radio_fsmcurrentstate) {
 
 		case S4435360_IDLE_STATE:
-
 			//If IDLE, get appropriate next state
 			if (radio_fsm_getstate() == RADIO_FSM_IDLE_STATE) {
 				if(s4435360_radio_gettxstatus()) {
@@ -122,6 +123,7 @@ void s4435360_radio_fsmprocessing() {
 
 				//Check for packet received
 				if (radio_fsm_read(s4435360_rx_buffer) == RADIO_FSM_DONE) {
+					debug_printf("SET\r\n");
 					s4435360_radio_rxstatus = 1;
 
 				}
@@ -203,7 +205,7 @@ void s4435360_radio_getrxaddress(unsigned char* addr) {
  * 			txpacket: the packet to transmit
  * @retval None
  */
-void s4435360_radio_sendpacket(char channel, unsigned char* addr, unsigned char* txpacket) {
+void s4435360_radio_sendpacket(unsigned char channel, unsigned char* addr, unsigned char* txpacket) {
 	radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
 	s4435360_radio_setchan(channel);
 	s4435360_radio_settxaddress(addr);
@@ -211,6 +213,9 @@ void s4435360_radio_sendpacket(char channel, unsigned char* addr, unsigned char*
 	//memcpy(s4435360_tx_buffer, txpacket, 32);
 	radio_fsm_setstate(RADIO_FSM_TX_STATE);
 	radio_fsm_write(txpacket);
+
+	s4435360_radio_fsmcurrentstate = S4435360_IDLE_STATE;
+	radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
 
 }
 

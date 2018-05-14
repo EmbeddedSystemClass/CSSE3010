@@ -17,13 +17,17 @@
 
 #include "FreeRTOS.h"
 #include "queue.h"
-#include "semphr.h"
 
-QueueHandle_t s4435360_QueuePan, s4435360_QueueTilt;
-SemaphoreHandle_t s4435360_SemaphorePanLeft, s4435360_SemaphorePanRight;
-SemaphoreHandle_t s4435360_SemaphoreTiltUp, s4435360_SemaphoreTiltDown;
+typedef struct {
+	char payload[11];
+	int payloadLength;
+	int retransmitAttempts;
+} RadioMessage;
 
-void s4435360_TaskPanTilt(void);
+QueueHandle_t txMessageQueue;
+
+extern void s4435360_TaskRadio(void);
+
 
 #endif
 

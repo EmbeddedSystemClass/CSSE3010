@@ -206,8 +206,8 @@ int hamming_decode_payload(char* decodedBuffer, char* payload, int length) {
 	HammingDecodedOutput hammingOutput;
 
 	for(int i = 0; i < length; i++) {
-		uint16_t encodedDoubleByte = (s4435360_rx_buffer[10 + (2 * i)] << 8) |
-				(s4435360_rx_buffer[10 + (2 * i) + 1]);
+		uint16_t encodedDoubleByte = (payload[2 * i] << 8) |
+				(payload[(2 * i) + 1]);
 		if(!encodedDoubleByte) {
 			break;
 		}

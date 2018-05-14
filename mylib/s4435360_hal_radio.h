@@ -34,7 +34,7 @@ void s4435360_radio_setrxaddress(unsigned char* addr);
 void s4435360_radio_getrxaddress(unsigned char* addr) ;
 unsigned char s4435360_radio_getchan(void);
 void s4435360_radio_gettxaddress(unsigned char* addr);
-void s4435360_radio_sendpacket(char channel, unsigned char* addr, unsigned char* txpacket);
+void s4435360_radio_sendpacket(unsigned char channel, unsigned char* addr, unsigned char* txpacket);
 void s4435360_radio_setfsmrx();
 int s4435360_radio_getrxstatus();
 int s4435360_radio_gettxstatus();

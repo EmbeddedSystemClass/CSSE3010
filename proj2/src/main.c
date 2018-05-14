@@ -24,17 +24,32 @@
 
 #include "FreeRTOS_CLI.h"
 
+#include "s4435360_os_radio.h"
+#include "s4435360_os_printf.h"
+
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 void CLI_Task(void);
+static BaseType_t prvRadioCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 /* Private variables ---------------------------------------------------------*/
 /* Task Priorities ------------------------------------------------------------*/
 #define CLI_TASK_PRIORITY		( tskIDLE_PRIORITY + 2 )
+#define RADIO_TASK_PRIORITY		( tskIDLE_PRIORITY + 3 )
+#define PRINTF_TASK_PRIORITY	( tskIDLE_PRIORITY + 2 )
 
 /* Task Stack Allocations -----------------------------------------------------*/
-#define CLI_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE * 3 )
+#define CLI_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE * 5 )
+#define RADIO_TASK_STACK_SIZE 	( configMINIMAL_STACK_SIZE * 5 )
+#define PRINTF_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE * 5 )
+
+CLI_Command_Definition_t radio = {
+	"radio",
+	"radio: Transmits the payload over radio.\r\n",
+	prvRadioCommand,
+	1
+};
 
 /**
   * @brief  Starts all the other tasks, then starts the scheduler.
@@ -44,19 +59,39 @@ void CLI_Task(void);
 int main( void ) {
 
 	BRD_init();
+	radio_fsm_getstate();
 
 	//Start tasks
-	xTaskCreate( (void *) &CLI_Task, (const signed char *) "CLI",
-			CLI_TASK_STACK_SIZE, NULL, CLI_TASK_PRIORITY, NULL );
+	xTaskCreate( (void *) &CLI_Task, (const char *) "CLI",
+			CLI_TASK_STACK_SIZE, NULL, CLI_TASK_PRIORITY, NULL);
+	xTaskCreate( (void *) &s4435360_TaskRadio, (const char *) "RADIO",
+			RADIO_TASK_STACK_SIZE, NULL, RADIO_TASK_PRIORITY, NULL);
+	xTaskCreate( (void *) &s4435360_TaskPrintf, (const char *) "PRINTF",
+			PRINTF_TASK_STACK_SIZE, NULL, PRINTF_TASK_PRIORITY, NULL);
 
 	/* Register CLI commands */
-	//FreeRTOS_CLIRegisterCommand(&xEcho);
+	FreeRTOS_CLIRegisterCommand(&radio);
 
 	/* Start the scheduler. */
 	vTaskStartScheduler();
 
 	/* We should never get here as control is now taken by the scheduler. */
   	return 0;
+}
+
+static BaseType_t prvRadioCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
+	myprintf("Radio command entered\r\n");
+
+	RadioMessage message;
+	message.retransmitAttempts = 0;
+
+	/* Get parameters from command string */
+	char* param = FreeRTOS_CLIGetParameter(pcCommandString, 1, (BaseType_t)(&(message.payloadLength)));
+
+	memcpy((void*) message.payload, (void*) param, message.payloadLength);
+
+	xQueueSendToBack(txMessageQueue, ( void * ) &message, ( TickType_t ) 100 );
+	return pdFALSE;
 }
 
 /**
@@ -84,7 +119,6 @@ void CLI_Task(void) {
 
 		/* Process if character if not Null */
 		if (cRxedChar != '\0') {
-
 			/* Echo character */
 			debug_putc(cRxedChar);
 
@@ -164,6 +198,10 @@ void vApplicationStackOverflowHook( xTaskHandle pxTask, signed char *pcTaskName 
 	BRD_LEDBlueOff();
 	( void ) pxTask;
 	( void ) pcTaskName;
+
+	portDISABLE_INTERRUPTS();
+	debug_printf("Stack overflow from '%s'\r\n", pcTaskName);
+	portENABLE_INTERRUPTS();
 
 	for( ;; );
 }
