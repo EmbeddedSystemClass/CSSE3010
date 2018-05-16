@@ -231,8 +231,8 @@ void radio_duplex_run(void) {
 		memset(&decodedOutput[0], 0, sizeof(decodedOutput));
 
 		for(int i = 0; i < 11; i++) {
-			uint16_t encodedDoubleByte = (s4435360_rx_buffer[10 + (2 * i)] << 8) |
-					(s4435360_rx_buffer[10 + (2 * i) + 1]);
+			uint16_t encodedDoubleByte = (s4435360_rx_buffer[2 * i] << 8) |
+					(s4435360_rx_buffer[(2 * i) + 1]);
 			if(!encodedDoubleByte) {
 				break;
 			}

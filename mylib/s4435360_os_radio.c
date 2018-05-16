@@ -51,23 +51,88 @@ EventGroupHandle_t ackctrl_EventGroup;
 RadioMessage retransmitMessage;
 TaskHandle_t ackTask;
 
-unsigned char channel = 52;
 unsigned char txAddress[5] = {0x52, 0x33, 0x22, 0x11, 0x00};
 unsigned char rxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
+unsigned char channel = 52;
+
 unsigned char packetHeader[10] = {0xA1, 		//Packet Type
-			0x52, 0x33, 0x22, 0x11,				//Source address
+			0x59, 0x00, 0x00, 0x80, //0x52, 0x33, 0x22, 0x11,				//Source address
 			0x07, 0x36, 0x35, 0x44,				//Destination address
 			0x00};								//Blank char
-
+int lastX = 0, lastY = 0, lastZ = 0;
 /* Private function prototypes -----------------------------------------------*/
 void FSMProcessing_Task(void);
 void Acknowledgment_Task(void);
 /* Private functions ---------------------------------------------------------*/
 
+unsigned char* get_txAddress(void) {
+	return txAddress;
+}
+
+unsigned char* get_rxAddress(void) {
+	return rxAddress;
+}
+
+unsigned char get_chan(void) {
+	return channel;
+}
+
+void set_rxAddress(unsigned char* addr) {
+	memcpy((void*) rxAddress, (void*) addr, 4);
+}
+
+void set_txAddress(unsigned char* addr) {
+	memcpy((void*) txAddress, (void*) addr, 4);
+}
+
+void set_chan(unsigned char chan) {
+	channel = chan;
+}
+void send_radio_message(char* payload, int payloadLength, int retransmitAttempts, int waitTime) {
+	RadioMessage message;
+
+	message.retransmitAttempts = retransmitAttempts;
+	message.payloadLength = payloadLength;
+	memcpy((void*) message.payload, (void*) payload, payloadLength);
+
+	xQueueSendToBack(txMessageQueue, ( void * ) &message, ( TickType_t ) waitTime);
+}
+
+void send_XYZ_message(int x, int y, int z, int waitTime) {
+	char xyzPayload[11];
+	sprintf(xyzPayload, "XYZ%03d%03d%02d", x, y, z);
+
+	lastX = x;
+	lastY = y;
+	lastZ = z;
+
+	send_radio_message(xyzPayload, 11, 0, waitTime);
+}
+
+void send_Z_message(int z, int waitTime) {
+	send_XYZ_message(lastX, lastY, z, waitTime);
+	lastZ = z;
+}
+
+void send_XY_message(int x, int y, int waitTime) {
+	send_XYZ_message(x, y, lastZ, waitTime);
+	lastX = x;
+	lastY = y;
+}
+
+void send_join_message(int waitTime) {
+	char* joinPayload = "JOIN";
+	send_radio_message(joinPayload, 4, 0, waitTime);
+}
+
 void form_packet(char* payload, int payloadLength, char* packet) {
 
 	/* Add packet header */
-	memcpy((void*) packet, (void*) packetHeader, PAYLOAD_STARTING_INDEX);
+	//memcpy((void*) packet, (void*) packetHeader, PAYLOAD_STARTING_INDEX);
+	packet[0] = 0xA1;
+	memcpy((void*) &packet[1], (void*) txAddress, 4);
+	memcpy((void*) &packet[5], (void*) rxAddress, 4);
+	packet[9] = 0x00;
 
 	/* Encode and add payload */
 	uint16_t encodedByte;
@@ -85,6 +150,8 @@ extern void s4435360_TaskRadio(void) {
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 	radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
 	s4435360_radio_setrxaddress(rxAddress);
+	s4435360_radio_settxaddress(txAddress);
+	s4435360_radio_setchan(channel);
 	s4435360_radio_txstatus = 0;
 	s4435360_radio_rxstatus = 0;
 
@@ -106,11 +173,10 @@ extern void s4435360_TaskRadio(void) {
 	for(EVER) {
 
 		//Transmission
-		if(xQueueReceive(txMessageQueue, &toSend, 10)) {
-
+		if(xQueuePeek(txMessageQueue, &toSend, 10)) {
 			//Check previous ack process has finished
 			if(xSemaphoreTake(transmitSemaphore, 10)) {
-
+				xQueueReceive(txMessageQueue, &toSend, 10);
 				//Send payload message
 				memset(&s4435360_tx_buffer[0], 0, 32);
 				form_packet(toSend.payload, toSend.payloadLength, (char*)s4435360_tx_buffer);
@@ -156,10 +222,6 @@ extern void s4435360_TaskRadio(void) {
 				myprintf("Received message with uncorrectable error\r\n");
 			}
 
-			for(int i = 0; i < 11; i++) {
-				myprintf("%X ", decodedPayload[i]);
-			}
-
 			memset(&s4435360_rx_buffer[0], 0, sizeof(s4435360_rx_buffer));
 			s4435360_radio_rxstatus = 0;
 		}
@@ -169,7 +231,6 @@ extern void s4435360_TaskRadio(void) {
 
 	}
 }
-
 
 void Acknowledgment_Task(void) {
 	//myprintf("ACK\r\n");

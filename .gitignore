@@ -7,4 +7,13 @@
 *.cproject
 *.xml
 *.cfg
+*.gitignore
+*.ld
+*.mk
+*.map
+*.list
+*.bin
+*.settings.xml
+*.language.settings.xml
 /LinkerScript.ld
+/makefile

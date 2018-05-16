@@ -26,13 +26,13 @@
 
 #include "s4435360_os_radio.h"
 #include "s4435360_os_printf.h"
+#include "s4435360_cli_radio.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 void CLI_Task(void);
-static BaseType_t prvRadioCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 /* Private variables ---------------------------------------------------------*/
 /* Task Priorities ------------------------------------------------------------*/
 #define CLI_TASK_PRIORITY		( tskIDLE_PRIORITY + 2 )
@@ -43,13 +43,6 @@ static BaseType_t prvRadioCommand(char *pcWriteBuffer, size_t xWriteBufferLen, c
 #define CLI_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE * 5 )
 #define RADIO_TASK_STACK_SIZE 	( configMINIMAL_STACK_SIZE * 5 )
 #define PRINTF_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE * 5 )
-
-CLI_Command_Definition_t radio = {
-	"radio",
-	"radio: Transmits the payload over radio.\r\n",
-	prvRadioCommand,
-	1
-};
 
 /**
   * @brief  Starts all the other tasks, then starts the scheduler.
@@ -70,7 +63,7 @@ int main( void ) {
 			PRINTF_TASK_STACK_SIZE, NULL, PRINTF_TASK_PRIORITY, NULL);
 
 	/* Register CLI commands */
-	FreeRTOS_CLIRegisterCommand(&radio);
+	register_radio_CLI_commands();
 
 	/* Start the scheduler. */
 	vTaskStartScheduler();
@@ -79,20 +72,6 @@ int main( void ) {
   	return 0;
 }
 
-static BaseType_t prvRadioCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
-	myprintf("Radio command entered\r\n");
-
-	RadioMessage message;
-	message.retransmitAttempts = 0;
-
-	/* Get parameters from command string */
-	char* param = FreeRTOS_CLIGetParameter(pcCommandString, 1, (BaseType_t)(&(message.payloadLength)));
-
-	memcpy((void*) message.payload, (void*) param, message.payloadLength);
-
-	xQueueSendToBack(txMessageQueue, ( void * ) &message, ( TickType_t ) 100 );
-	return pdFALSE;
-}
 
 /**
   * @brief  CLI Receive Task.

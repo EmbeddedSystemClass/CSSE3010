@@ -1,9 +1,9 @@
 /**
  ******************************************************************************
- * @file    mylib/s4435360_os_pantilt.h
+ * @file    mylib/s4435360_cli_radio.h
  * @author  Samuel Eadie - 44353607
- * @date    070518
- * @brief   Pantilt OS functionality
+ * @date    14052018
+ * @brief   Provides CLI commands for radio
  *
  ******************************************************************************
  *     EXTERNAL FUNCTIONS
@@ -12,18 +12,14 @@
  ******************************************************************************
  */
 
-#ifndef S4435360_OS_PANTILT_H
-#define S4435360_OS_PANTILT_H
+#ifndef S4435360_CLI_RADIO_H
+#define S4435360_CLI_RADIO_H
 
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "semphr.h"
 
-QueueHandle_t s4435360_QueuePan, s4435360_QueueTilt;
-SemaphoreHandle_t s4435360_SemaphorePanLeft, s4435360_SemaphorePanRight;
-SemaphoreHandle_t s4435360_SemaphoreTiltUp, s4435360_SemaphoreTiltDown;
-
-void s4435360_TaskPanTilt(void);
+void register_radio_CLI_commands(void);
 
 #endif
 

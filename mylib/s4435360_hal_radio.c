@@ -48,7 +48,7 @@ void s4435360_radio_init(void) {
  */
 void s4435360_radio_fsmprocessing() {
 
-	debug_printf("%d\r\n", s4435360_radio_fsmcurrentstate);
+	//debug_printf("%d\r\n", s4435360_radio_fsmcurrentstate);
 	/* Process current state */
 	switch (s4435360_radio_fsmcurrentstate) {
 
