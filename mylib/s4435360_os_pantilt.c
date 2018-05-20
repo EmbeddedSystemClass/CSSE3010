@@ -16,6 +16,7 @@
 #include <s4435360_os_pantilt.h>
 
 #include <stdio.h>
+#include <math.h>
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
@@ -29,12 +30,33 @@
 /* Private define ------------------------------------------------------------*/
 #define EVER						;;
 #define PANTILT_QUEUE_LENGTH		10
-#define PANTILT_STACK_SIZE			(configMINIMAL_STACK_SIZE * 2)
-#define PANTILT_TASK_PRIORITY		(tskIDLE_PRIORITY + 2)
+
+#define PI			3.14159265
+#define RAD_TO_DEG(angle) 			((180.0 * angle) / PI)
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
+void s4435360_pantilt_changeX(int x) {
+	float x2 = 1.5 * x;
+	float x3 = x2 - 150.0;
+	float x4 = x3 / 300.0;
+	float angleRadians = atan(x4);
+	int panAngle = -1 * RAD_TO_DEG(angleRadians);
+	myprintf("%d, %f, %f, %f, %f, %d\r\n", x, x2, x3, x4, angleRadians, panAngle);
+
+	if(s4435360_QueuePan != NULL) {
+		xQueueSendToBack(s4435360_QueuePan, ( void * ) &panAngle, portMAX_DELAY);
+	}
+}
+
+void s4435360_pantilt_changeY(int y) {
+	int tiltAngle = RAD_TO_DEG(atan((float)y / 300.0)) - 90;
+	myprintf("Tilt angle = %d, from %d\r\n", tiltAngle, y);
+	if(s4435360_QueueTilt != NULL) {
+		xQueueSendToBack(s4435360_QueueTilt, ( void * ) &tiltAngle, portMAX_DELAY);
+	}
+}
 
 void s4435360_TaskPanTilt(void) {
 
@@ -46,6 +68,7 @@ void s4435360_TaskPanTilt(void) {
 	s4435360_QueueTilt = xQueueCreate(PANTILT_QUEUE_LENGTH, sizeof(int));
 
 	//initialise pan and tilt semaphores
+	s4435360_SemaphoreUpdatePantilt = xSemaphoreCreateBinary();
 	s4435360_SemaphorePanLeft = xSemaphoreCreateBinary();
 	s4435360_SemaphorePanRight = xSemaphoreCreateBinary();
 	s4435360_SemaphoreTiltUp = xSemaphoreCreateBinary();
@@ -54,27 +77,42 @@ void s4435360_TaskPanTilt(void) {
 	int controlCommand;
 
 	for(EVER) {
-		if(xQueueReceive(s4435360_QueuePan, &controlCommand, 0)) {
-			s4435360_hal_pantilt_pan_write(controlCommand);
-			myprintf("Pan write of %d\r\n", controlCommand);
-		} else if (xQueueReceive(s4435360_QueueTilt, &controlCommand, 0)) {
-			s4435360_hal_pantilt_tilt_write(controlCommand);
-			myprintf("Tilt write of %d\r\n", controlCommand);
-		} else if (xSemaphoreTake(s4435360_SemaphorePanLeft, 0)) {
+		//myprintf("Pantilt task here\r\n");
+		if(xSemaphoreTake(s4435360_SemaphoreUpdatePantilt, 0)) {
+			if(xQueueReceive(s4435360_QueuePan, &controlCommand, 0)) {
+				s4435360_hal_pantilt_pan_write(controlCommand);
+				myprintf("Pan write of %d\r\n", controlCommand);
+			}
+
+			vTaskDelay(1000);
+
+			if (xQueueReceive(s4435360_QueueTilt, &controlCommand, 0)) {
+				s4435360_hal_pantilt_tilt_write(controlCommand);
+				myprintf("Tilt write of %d\r\n", controlCommand);
+			}
+		}
+
+		if (xSemaphoreTake(s4435360_SemaphorePanLeft, 0)) {
 			s4435360_hal_pantilt_pan_write(s4435360_hal_pantilt_pan_read() - 5);
 			myprintf("Pan Left\r\n");
-		} else if (xSemaphoreTake(s4435360_SemaphorePanRight, 0)) {
+		}
+
+		if (xSemaphoreTake(s4435360_SemaphorePanRight, 0)) {
 			s4435360_hal_pantilt_pan_write(s4435360_hal_pantilt_pan_read() + 5);
 			myprintf("Pan Right\r\n");
-		} else if (xSemaphoreTake(s4435360_SemaphoreTiltUp, 0)) {
+		}
+
+		if (xSemaphoreTake(s4435360_SemaphoreTiltUp, 0)) {
 			s4435360_hal_pantilt_tilt_write(s4435360_hal_pantilt_tilt_read() + 5);
 			myprintf("Tilt up\r\n");
-		} else if (xSemaphoreTake(s4435360_SemaphoreTiltDown, 0)) {
+		}
+
+		if (xSemaphoreTake(s4435360_SemaphoreTiltDown, 0)) {
 			s4435360_hal_pantilt_tilt_write(s4435360_hal_pantilt_tilt_read() - 5);
 			myprintf("Tilt down\r\n");
 		}
 
-		vTaskDelay(100);
+		vTaskDelay(500);
 
 	}
 }

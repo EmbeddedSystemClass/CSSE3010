@@ -25,6 +25,7 @@ typedef struct {
 	char payload[11];
 	int payloadLength;
 	int retransmitAttempts;
+	int isXYZ;
 } RadioMessage;
 
 QueueHandle_t txMessageQueue;
@@ -38,7 +39,7 @@ void set_chan(unsigned char chan);
 
 extern void s4435360_TaskRadio(void);
 
-void send_radio_message(char* payload, int payloadLength, int retransmitAttempts, int waitTime);
+void send_radio_message(char* payload, int payloadLength, int retransmitAttempts, int waitTime, int isXYZ);
 
 void send_XYZ_message(int x, int y, int z, int waitTime);
 

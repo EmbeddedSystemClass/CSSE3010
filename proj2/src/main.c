@@ -27,6 +27,7 @@
 #include "s4435360_os_radio.h"
 #include "s4435360_os_printf.h"
 #include "s4435360_cli_radio.h"
+#include "s4435360_os_pantilt.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -38,11 +39,42 @@ void CLI_Task(void);
 #define CLI_TASK_PRIORITY		( tskIDLE_PRIORITY + 2 )
 #define RADIO_TASK_PRIORITY		( tskIDLE_PRIORITY + 3 )
 #define PRINTF_TASK_PRIORITY	( tskIDLE_PRIORITY + 2 )
-
+#define PANTILT_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
 /* Task Stack Allocations -----------------------------------------------------*/
 #define CLI_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE * 5 )
 #define RADIO_TASK_STACK_SIZE 	( configMINIMAL_STACK_SIZE * 5 )
 #define PRINTF_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE * 5 )
+#define PANTILT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE * 5 )
+
+
+static BaseType_t prvPantiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
+
+	myprintf("pantilt command\r\n");
+	/* Get parameters from command string */
+	long xLen, yLen;
+	const char* xString = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xLen);
+	const char* yString = FreeRTOS_CLIGetParameter(pcCommandString, 2, &yLen);
+
+	char* xRemainder, yRemainder;
+	long x = strtol(xString, &xRemainder, 10);
+	long y = strtol(yString, &yRemainder, 10);
+
+	s4435360_pantilt_changeX(x);
+	s4435360_pantilt_changeY(y);
+	xSemaphoreGive(s4435360_SemaphoreUpdatePantilt);
+
+	return pdFALSE;
+
+}
+
+CLI_Command_Definition_t pantilt = {
+	"pantilt",
+	"pantilt: moves the pantilt to point at the specified (x, y).\r\n",
+	prvPantiltCommand,
+	2
+};
+
+
 
 /**
   * @brief  Starts all the other tasks, then starts the scheduler.
@@ -53,6 +85,7 @@ int main( void ) {
 
 	BRD_init();
 	radio_fsm_getstate();
+	HAL_TIM_PWM_Init(NULL);
 
 	//Start tasks
 	xTaskCreate( (void *) &CLI_Task, (const char *) "CLI",
@@ -61,9 +94,12 @@ int main( void ) {
 			RADIO_TASK_STACK_SIZE, NULL, RADIO_TASK_PRIORITY, NULL);
 	xTaskCreate( (void *) &s4435360_TaskPrintf, (const char *) "PRINTF",
 			PRINTF_TASK_STACK_SIZE, NULL, PRINTF_TASK_PRIORITY, NULL);
+	xTaskCreate( (void *) &s4435360_TaskPanTilt, (const char *) "PANTILT",
+			PANTILT_TASK_STACK_SIZE, NULL, PANTILT_TASK_PRIORITY, NULL);
 
 	/* Register CLI commands */
 	register_radio_CLI_commands();
+	FreeRTOS_CLIRegisterCommand(&pantilt);
 
 	/* Start the scheduler. */
 	vTaskStartScheduler();

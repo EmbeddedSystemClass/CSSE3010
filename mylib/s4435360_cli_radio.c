@@ -144,7 +144,7 @@ static BaseType_t prvGetTxAddrCommand(char *pcWriteBuffer, size_t xWriteBufferLe
 
 static BaseType_t prvJoinCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
-	send_join_message(100);
+	send_join_message(portMAX_DELAY);
 
 	return pdFALSE;
 }
@@ -163,7 +163,7 @@ static BaseType_t prvXYZCommand(char *pcWriteBuffer, size_t xWriteBufferLen, con
 	long z = strtol(zString, &zRemainder, 10);
 
 	//if((!strlen(xRemainder)) && (!strlen(yRemainder)) && (!strlen(zRemainder))) {
-		send_XYZ_message(x, y, z, 100);
+		send_XYZ_message(x, y, z, portMAX_DELAY);
 		//}
 	return pdFALSE;
 
@@ -181,7 +181,7 @@ static BaseType_t prvMoveCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
 	long y = strtol(yString, &yRemainder, 10);
 
 	//if((!strlen(xRemainder)) && (!strlen(yRemainder)) && (!strlen(zRemainder))) {
-		send_XY_message(x, y, 100);
+		send_XY_message(x, y, portMAX_DELAY);
 
 	//}
 
@@ -195,12 +195,12 @@ static BaseType_t prvPenCommand(char *pcWriteBuffer, size_t xWriteBufferLen, con
 	long paramLen;
 	const char* param = FreeRTOS_CLIGetParameter(pcCommandString, 1, &paramLen);
 
-	send_join_message(100);
+	send_join_message(portMAX_DELAY);
 
 	if(!strncmp((const char*) param, "up", 2)) {
-		send_Z_message(DEFAULT_UP_Z_VALUE, 100);
+		send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
 	} else if(!strncmp((const char*) param, "down", 4)) {
-		send_Z_message(DEFAULT_DOWN_Z_VALUE, 100);
+		send_Z_message(DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
 	}
 
 	return pdFALSE;
@@ -209,8 +209,8 @@ static BaseType_t prvPenCommand(char *pcWriteBuffer, size_t xWriteBufferLen, con
 
 static BaseType_t prvOriginCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
-	send_join_message(100);
-	send_XYZ_message(0, 0, 0, 100);
+	send_join_message(portMAX_DELAY);
+	send_XYZ_message(0, 0, 0, portMAX_DELAY);
 
 }
 
@@ -230,13 +230,13 @@ static BaseType_t prvLineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
 
 	//if((!strlen(xRemainder)) && (!strlen(yRemainder)) && (!strlen(lengthRemainder))
 	//	&& (strlen(typeString) == 1) && ((typeString[0] == 'h') || (typeString[0] == 'v'))) {
-		send_join_message(100);
-		send_Z_message(DEFAULT_UP_Z_VALUE, 100);
-		send_XYZ_message(x, y, DEFAULT_DOWN_Z_VALUE, 100);
+		send_join_message(portMAX_DELAY);
+		send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+		send_XYZ_message(x, y, DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
 		if(typeString[0] == 'h') {
-			send_XY_message(x + length, y, 100);
+			send_XY_message(x + length, y, portMAX_DELAY);
 		} else {
-			send_XY_message(x, y + length, 100);
+			send_XY_message(x, y + length, portMAX_DELAY);
 		}
 
 
@@ -260,13 +260,11 @@ static BaseType_t prvSquareCommand(char *pcWriteBuffer, size_t xWriteBufferLen, 
 	long side = strtol(sideString, &sideRemainder, 10);
 
 	//if((!strlen(xRemainder)) && (!strlen(yRemainder)) && (!strlen(sideRemainder))) {
-	send_join_message(100);
-	send_Z_message(DEFAULT_UP_Z_VALUE, 100);
-	send_XYZ_message(x, y, DEFAULT_DOWN_Z_VALUE, 100);
-	//send_XY_message(x + side, y, 100);
-	send_XY_message(x + side, y + side, 100);
-	//send_XY_message(x, y + side, 100);
-	send_XY_message(x, y, 100);
+	send_join_message(portMAX_DELAY);
+	send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+	send_XYZ_message(x, y, DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
+	send_XY_message(x + side, y + side, portMAX_DELAY);
+	send_XY_message(x, y, portMAX_DELAY);
 }
 
 static BaseType_t prvBlineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
@@ -292,9 +290,9 @@ static BaseType_t prvBlineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, c
 	//}
 
 	//Bresenham Line Generation
-	send_join_message(100);
-	send_Z_message(DEFAULT_UP_Z_VALUE, 100);
-	send_XYZ_message(x1, y1, DEFAULT_DOWN_Z_VALUE, 100);
+	send_join_message(portMAX_DELAY);
+	send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+	send_XYZ_message(x1, y1, DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
 
 	int dx = x2 - x1;
 	int dy = y2 - y1;
@@ -311,10 +309,10 @@ static BaseType_t prvBlineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, c
 				yi++;
 				D -= (2 * dx);
 				if(!(i % stepSize)) {
-					send_XY_message(xi, yi, 100);
+					send_XY_message(xi, yi, portMAX_DELAY);
 				}
 			} else if(!(i % stepSize)) {
-				send_XY_message(xi, yi, 100);
+				send_XY_message(xi, yi, portMAX_DELAY);
 			}
 
 			D += (2 * dy);
@@ -330,10 +328,10 @@ static BaseType_t prvBlineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, c
 				xi++;
 				D -= (2 * dy);
 				if(!(i % stepSize)) {
-					send_XY_message(xi, yi, 100);
+					send_XY_message(xi, yi, portMAX_DELAY);
 				}
 			} else if(!(i % stepSize)) {
-				send_XY_message(xi, yi, 100);
+				send_XY_message(xi, yi, portMAX_DELAY);
 			}
 
 			D += (2 * dx);
@@ -341,7 +339,7 @@ static BaseType_t prvBlineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, c
 		}
 	}
 
-	send_XYZ_message(xi, yi, DEFAULT_UP_Z_VALUE, 100);
+	send_XYZ_message(x2, y2, DEFAULT_UP_Z_VALUE, portMAX_DELAY);
 
 
 	return pdFALSE;

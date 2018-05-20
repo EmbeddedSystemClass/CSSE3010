@@ -16,6 +16,7 @@
 #include "s4435360_hal_radio.h"
 #include "s4435360_hal_hamming.h"
 #include "s4435360_os_printf.h"
+#include "s4435360_os_pantilt.h"
 
 #include <stdio.h>
 #include "string.h"
@@ -33,10 +34,8 @@
 #define RADIO_QUEUE_LENGTH			10
 
 #define ACKNOWLEDGEMENT_STACK_SIZE			( configMINIMAL_STACK_SIZE * 5 )
-#define FSM_PROCESSING_STACK_SIZE			( configMINIMAL_STACK_SIZE * 5 )
 
-#define ACKNOWLEDGEMENT_TASK_PRIORITY 		( tskIDLE_PRIORITY + 2 )
-#define FSM_PROCESSING_TASK_PRIORITY		( tskIDLE_PRIORITY + 2 )
+#define ACKNOWLEDGEMENT_TASK_PRIORITY 		( tskIDLE_PRIORITY + 5 )
 
 //Event group definitions for ack/err
 #define EVT_ACK				1 << 0		//ACK received
@@ -44,6 +43,7 @@
 #define ACKCTRL_EVENT		EVT_ACK | EVT_ERR	//Control Event Group Mask
 
 #define PAYLOAD_STARTING_INDEX		10
+
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 SemaphoreHandle_t transmitSemaphore;
@@ -88,11 +88,12 @@ void set_txAddress(unsigned char* addr) {
 void set_chan(unsigned char chan) {
 	channel = chan;
 }
-void send_radio_message(char* payload, int payloadLength, int retransmitAttempts, int waitTime) {
+void send_radio_message(char* payload, int payloadLength, int retransmitAttempts, int waitTime, int isXYZ) {
 	RadioMessage message;
 
 	message.retransmitAttempts = retransmitAttempts;
 	message.payloadLength = payloadLength;
+	message.isXYZ = isXYZ;
 	memcpy((void*) message.payload, (void*) payload, payloadLength);
 
 	xQueueSendToBack(txMessageQueue, ( void * ) &message, ( TickType_t ) waitTime);
@@ -106,7 +107,10 @@ void send_XYZ_message(int x, int y, int z, int waitTime) {
 	lastY = y;
 	lastZ = z;
 
-	send_radio_message(xyzPayload, 11, 0, waitTime);
+	//s4435360_pantilt_changeX(x);
+	//s4435360_pantilt_changeY(y);
+
+	send_radio_message(xyzPayload, 11, 0, waitTime, 1);
 }
 
 void send_Z_message(int z, int waitTime) {
@@ -122,7 +126,7 @@ void send_XY_message(int x, int y, int waitTime) {
 
 void send_join_message(int waitTime) {
 	char* joinPayload = "JOIN";
-	send_radio_message(joinPayload, 4, 0, waitTime);
+	send_radio_message(joinPayload, 4, 0, waitTime, 0);
 }
 
 void form_packet(char* payload, int payloadLength, char* packet) {
@@ -174,24 +178,27 @@ extern void s4435360_TaskRadio(void) {
 
 		//Transmission
 		if(xQueuePeek(txMessageQueue, &toSend, 10)) {
+			myprintf("peeked\r\n");
 			//Check previous ack process has finished
 			if(xSemaphoreTake(transmitSemaphore, 10)) {
+				myprintf("taken\r\n");
 				xQueueReceive(txMessageQueue, &toSend, 10);
 				//Send payload message
 				memset(&s4435360_tx_buffer[0], 0, 32);
 				form_packet(toSend.payload, toSend.payloadLength, (char*)s4435360_tx_buffer);
 				s4435360_radio_sendpacket(channel, txAddress, s4435360_tx_buffer);
-
+				myprintf("Packet sent\r\n");
 				//Clear bits for new acknowledgment routine
 				xEventGroupClearBits(ackctrl_EventGroup, EVT_ACK | EVT_ERR);
 
-				vTaskDelay(1000);
+				//vTaskDelay(1000);
 				retransmitMessage = toSend;
 
 				//Create task to check acknowledgment
 				xTaskCreate((void *) &Acknowledgment_Task, (const char *) "ACK",
 						ACKNOWLEDGEMENT_STACK_SIZE, NULL, ACKNOWLEDGEMENT_TASK_PRIORITY, &ackTask);
 				//xSemaphoreGive(transmitSemaphore);
+				myprintf("Created new task\r\n");
 
 			}
 		}
@@ -233,7 +240,7 @@ extern void s4435360_TaskRadio(void) {
 }
 
 void Acknowledgment_Task(void) {
-	//myprintf("ACK\r\n");
+	myprintf("Inside ack\r\n");
 	//Block for ERR or ACK, 3 second timeout
 	EventBits_t eventBits = xEventGroupWaitBits(ackctrl_EventGroup, EVT_ACK | EVT_ERR,	pdTRUE,	pdFALSE, 3000);
 
@@ -241,34 +248,29 @@ void Acknowledgment_Task(void) {
 
 	//ACK received in 3 seconds
 	if((eventBits & EVT_ACK) != 0) {
-
+		//if(retransmitMessage.isXYZ) {
+		//	xSemaphoreGive(s4435360_SemaphoreUpdatePantilt);
+		//}
+		myprintf("Inside ack handler\r\n");
+		xSemaphoreGive(transmitSemaphore);
 	} else if ((eventBits & EVT_ERR) != 0) {
 		//ERR received
 		myprintf("Adjusting for ERR\r\n");
 		retransmitMessage.retransmitAttempts = 0;
-		xQueueSendToFront(txMessageQueue, (void*) &retransmitMessage, 100);
+		xQueueSendToFront(txMessageQueue, (void*) &retransmitMessage, portMAX_DELAY);
 
 	} else {
 		//ACK not received - retransmit
 		if(retransmitMessage.retransmitAttempts < 2) {
-			//myprintf("Retransmit message added to front of queue\r\n");
 			vTaskDelay(100);
 			retransmitMessage.retransmitAttempts++;
-			xQueueSendToFront(txMessageQueue, (void*) &retransmitMessage, 100);
+			xQueueSendToFront(txMessageQueue, (void*) &retransmitMessage, portMAX_DELAY);
 		} else {
 			myprintf("Giving up after 3 attempts\r\n");
 		}
 	}
 
+	myprintf("Semaphore give\r\n");
 	xSemaphoreGive(transmitSemaphore);
 	vTaskDelete(ackTask);
-}
-
-void FSMProcessing_Task(void) {
-	for(EVER) {
-		debug_printf("5a");
-		s4435360_radio_fsmprocessing();
-		debug_printf("5b");
-		vTaskDelay(500);
-	}
 }
