@@ -75,45 +75,53 @@ static BaseType_t prvGetChanCommand(char *pcWriteBuffer, size_t xWriteBufferLen,
 static BaseType_t prvSetTxAddrCommand (char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	long paramLen;
-	const char* parameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &paramLen);
+	const char* param = FreeRTOS_CLIGetParameter(pcCommandString, 1, &paramLen);
+
+	char addr1[2];
+	char addr2[2];
+	char addr3[2];
+	char addr4[2];
+
+	memcpy(addr1, (void*)&param[0], 2);
+	memcpy(addr2, (void*)&param[2], 2);
+	memcpy(addr3, (void*)&param[4], 2);
+	memcpy(addr4, (void*)&param[6], 2);
 
 	unsigned char addr[5];
 	char* remainder;
-	uint64_t value = strtol(parameter, &remainder, 16);
-
-	value = 0x80000055;
-
-	if(!strlen(remainder)) {
-		for(int i = 0; i < 4; i++) {
-			addr[i] = (uint8_t)value;
-			value >>= 8;
-			myprintf("--> %X", addr[i]);
-		}
-	}
-
+	addr[0] = (unsigned char) strtol(addr4, &remainder, 16);
+	addr[1] = (unsigned char) strtol(addr3, &remainder, 16);
+	addr[2] = (unsigned char) strtol(addr2, &remainder, 16);
+	addr[3] = (unsigned char) strtol(addr1, &remainder, 16);
 	addr[4] = 0x00;
 
 	set_txAddress(addr);
-	s4435360_radio_settxaddress(get_txAddress());
+	s4435360_radio_settxaddress(addr);
+
 	return pdFALSE;
 }
 
 static BaseType_t prvSetRxAddrCommand (char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	long paramLen;
-	const char* parameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &paramLen);
+	const char* param = FreeRTOS_CLIGetParameter(pcCommandString, 1, &paramLen);
+
+	char addr1[2];
+	char addr2[2];
+	char addr3[2];
+	char addr4[2];
+
+	memcpy(addr1, (void*)&param[0], 2);
+	memcpy(addr2, (void*)&param[2], 2);
+	memcpy(addr3, (void*)&param[4], 2);
+	memcpy(addr4, (void*)&param[6], 2);
 
 	unsigned char addr[5];
 	char* remainder;
-	uint32_t value = strtol(parameter, &remainder, 16);
-
-	if(!strlen(remainder)) {
-		for(int i = 0; i < 4; i++) {
-			addr[i] = (uint8_t)value;
-			value >>= 8;
-		}
-	}
-
+	addr[0] = (unsigned char) strtol(addr4, &remainder, 16);
+	addr[1] = (unsigned char) strtol(addr3, &remainder, 16);
+	addr[2] = (unsigned char) strtol(addr2, &remainder, 16);
+	addr[3] = (unsigned char) strtol(addr1, &remainder, 16);
 	addr[4] = 0x00;
 
 	set_rxAddress(addr);
@@ -126,9 +134,9 @@ static BaseType_t prvGetRxAddrCommand(char *pcWriteBuffer, size_t xWriteBufferLe
 
 	unsigned char* rxAddress = get_rxAddress();
 	xWriteBufferLen = sprintf((char *) pcWriteBuffer, "0x%02X 0x%02X 0x%02X 0x%02X\n\r", rxAddress[3],
-																			rxAddress[2],
-																			rxAddress[1],
-																			rxAddress[0]);
+			rxAddress[2],
+			rxAddress[1],
+			rxAddress[0]);
 	return pdFALSE;
 }
 
@@ -136,9 +144,9 @@ static BaseType_t prvGetTxAddrCommand(char *pcWriteBuffer, size_t xWriteBufferLe
 
 	unsigned char* txAddress = get_txAddress();
 	xWriteBufferLen = sprintf((char *) pcWriteBuffer, "0x%02X 0x%02X 0x%02X 0x%02X\n\r", txAddress[3],
-																			txAddress[2],
-																			txAddress[1],
-																			txAddress[0]);
+			txAddress[2],
+			txAddress[1],
+			txAddress[0]);
 	return pdFALSE;
 }
 
@@ -163,8 +171,8 @@ static BaseType_t prvXYZCommand(char *pcWriteBuffer, size_t xWriteBufferLen, con
 	long z = strtol(zString, &zRemainder, 10);
 
 	//if((!strlen(xRemainder)) && (!strlen(yRemainder)) && (!strlen(zRemainder))) {
-		send_XYZ_message(x, y, z, portMAX_DELAY);
-		//}
+	send_XYZ_message(x, y, z, portMAX_DELAY);
+	//}
 	return pdFALSE;
 
 }
@@ -181,7 +189,7 @@ static BaseType_t prvMoveCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
 	long y = strtol(yString, &yRemainder, 10);
 
 	//if((!strlen(xRemainder)) && (!strlen(yRemainder)) && (!strlen(zRemainder))) {
-		send_XY_message(x, y, portMAX_DELAY);
+	send_XY_message(x, y, portMAX_DELAY);
 
 	//}
 
@@ -230,14 +238,14 @@ static BaseType_t prvLineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
 
 	//if((!strlen(xRemainder)) && (!strlen(yRemainder)) && (!strlen(lengthRemainder))
 	//	&& (strlen(typeString) == 1) && ((typeString[0] == 'h') || (typeString[0] == 'v'))) {
-		send_join_message(portMAX_DELAY);
-		send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
-		send_XYZ_message(x, y, DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
-		if(typeString[0] == 'h') {
-			send_XY_message(x + length, y, portMAX_DELAY);
-		} else {
-			send_XY_message(x, y + length, portMAX_DELAY);
-		}
+	send_join_message(portMAX_DELAY);
+	send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+	send_XYZ_message(x, y, DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
+	if(typeString[0] == 'h') {
+		send_XY_message(x + length, y, portMAX_DELAY);
+	} else {
+		send_XY_message(x, y + length, portMAX_DELAY);
+	}
 
 
 	//}
@@ -277,7 +285,7 @@ static BaseType_t prvBlineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, c
 	const char* y2String = FreeRTOS_CLIGetParameter(pcCommandString, 4, &y2Len);
 	const char* stepSizeString = FreeRTOS_CLIGetParameter(pcCommandString, 5, &stepSizeLen);
 
-	char* x1Remainder, y1Remainder, x2Remainder, y2Remainder, stepSizeRemainder;
+	char* x1Remainder, *y1Remainder, *x2Remainder, *y2Remainder, *stepSizeRemainder;
 	long x1 = strtol(x1String, &x1Remainder, 10);
 	long y1 = strtol(y1String, &y1Remainder, 10);
 	long x2 = strtol(x2String, &x2Remainder, 10);
@@ -290,62 +298,79 @@ static BaseType_t prvBlineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, c
 	//}
 
 	//Bresenham Line Generation
-	send_join_message(portMAX_DELAY);
-	send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
-	send_XYZ_message(x1, y1, DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
-
-	int dx = x2 - x1;
-	int dy = y2 - y1;
-	int xi = x1;
-	int yi = y1;
-	int D;
-
-	//m < 1
-	if(dx > dy) {
-		D = (2 * dy) - dx;
-
-		for(int i = 0; i < dx; i++) {
-			if(D > 0) {
-				yi++;
-				D -= (2 * dx);
-				if(!(i % stepSize)) {
-					send_XY_message(xi, yi, portMAX_DELAY);
-				}
-			} else if(!(i % stepSize)) {
-				send_XY_message(xi, yi, portMAX_DELAY);
-			}
-
-			D += (2 * dy);
-			xi++;
+	//send_join_message(portMAX_DELAY);
+	//send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+	//send_XYZ_message(x1, y1, DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
+	//myprintf("(%d, %d)\r\n", x1, y1); //
+	if(abs(y2 - y1) < abs(x2 - x1)) {
+		if(x1 > x2) {
+			bline_low(x2, y2, x1, y1, stepSize);
+		} else {
+			bline_low(x1, y1, x2, y2, stepSize);
 		}
-
-		//m > 1
 	} else {
-		D = (2 * dx) - dy;
-
-		for(int i = 0; i < dy; i++) {
-			if(D > 0) {
-				xi++;
-				D -= (2 * dy);
-				if(!(i % stepSize)) {
-					send_XY_message(xi, yi, portMAX_DELAY);
-				}
-			} else if(!(i % stepSize)) {
-				send_XY_message(xi, yi, portMAX_DELAY);
-			}
-
-			D += (2 * dx);
-			yi++;
+		if(y1 > y2) {
+			bline_high(x2, y2, x1, y1, stepSize);
+		} else {
+			bline_high(x1, y1, x2, y2, stepSize);
 		}
 	}
-
-	send_XYZ_message(x2, y2, DEFAULT_UP_Z_VALUE, portMAX_DELAY);
-
 
 	return pdFALSE;
 
 }
 
+void bline_low(int x1, int y1, int x2, int y2, int stepSize) {
+
+	int dx = x2 - x1;
+	int dy = y2 - y1 > 0 ? y2 - y1 : y1 - y2;
+	int deltay = y2 - y1 > 0 ? 1 : -1;
+	int xi = x1;
+	int yi = y1;
+	int D = (2 * dy) - dx;
+
+	for(int i = 0; i < dx; i++) {
+		if(!(i % stepSize)) {
+				myprintf("(%d, %d)\r\n", xi, yi); //send_XY_message(xi, yi, portMAX_DELAY);
+		}
+		if(D > 0) {
+			yi += deltay;
+			D -= (2 * dx);
+		}
+
+		D += (2 * dy);
+		xi++;
+		vTaskDelay(200);
+	}
+
+	myprintf("(%d, %d)\r\n", x2, y2); //send_XYZ_message(x2, y2, DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+}
+
+void bline_high(int x1, int y1, int x2, int y2, int stepSize) {
+	int dx = x2 - x1 > 0 ? x2 - x1 : x1 - x2;
+	int dy = y2 - y1;
+	int deltax = x2 - x1 > 0 ? 1 : -1;
+	int xi = x1;
+	int yi = y1;
+	int D = (2 * dx) - dy;
+
+	for(int i = 0; i < dy; i++) {
+		if(!(i % stepSize)) {
+				myprintf("(%d, %d)\r\n", xi, yi); //send_XY_message(xi, yi, portMAX_DELAY);
+			}
+
+		if(D > 0) {
+			xi += deltax;
+			D -= (2 * dy);
+		}
+
+		D += (2 * dx);
+		yi++;
+		vTaskDelay(200);
+	}
+
+	myprintf("(%d, %d)\r\n", x2, y2); //send_XYZ_message(x2, y2, DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+}
 
 
 static BaseType_t prvRadioCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
@@ -362,115 +387,115 @@ static BaseType_t prvRadioCommand(char *pcWriteBuffer, size_t xWriteBufferLen, c
 }
 
 CLI_Command_Definition_t radio = {
-	"radio",
-	"radio: Transmits the payload over radio.\r\n",
-	prvRadioCommand,
-	1
+		"radio",
+		"radio: Transmits the payload over radio.\r\n",
+		prvRadioCommand,
+		1
 };
 
 CLI_Command_Definition_t getsys = {
-	"getsys",
-	"getsys: Returns the current system time in ms.\r\n",
-	prvGetSysCommand,
-	0
+		"getsys",
+		"getsys: Returns the current system time in ms.\r\n",
+		prvGetSysCommand,
+		0
 };
 
 CLI_Command_Definition_t setchan = {
-	"setchan",
-	"setchan: Sets the radio channel.\r\n",
-	prvSetChanCommand,
-	1
+		"setchan",
+		"setchan: Sets the radio channel.\r\n",
+		prvSetChanCommand,
+		1
 };
 
 CLI_Command_Definition_t getchan = {
-	"getchan",
-	"getchan: Returns the radio's current channel.\r\n",
-	prvGetChanCommand,
-	0
+		"getchan",
+		"getchan: Returns the radio's current channel.\r\n",
+		prvGetChanCommand,
+		0
 };
 
 CLI_Command_Definition_t settxaddr = {
-	"settxaddr",
-	"settxaddr: Sets the radio's transmit address.\r\n",
-	prvSetTxAddrCommand,
-	1
+		"settxaddr",
+		"settxaddr: Sets the radio's transmit address.\r\n",
+		prvSetTxAddrCommand,
+		1
 };
 
 CLI_Command_Definition_t setrxaddr = {
-	"setrxaddr",
-	"setrxaddr: Sets the radio's receive address.\r\n",
-	prvSetRxAddrCommand,
-	1
+		"setrxaddr",
+		"setrxaddr: Sets the radio's receive address.\r\n",
+		prvSetRxAddrCommand,
+		1
 };
 
 CLI_Command_Definition_t getrxaddr = {
-	"getrxaddr",
-	"getrxaddr: Returns the radio's receive address.\r\n",
-	prvGetRxAddrCommand,
-	0
+		"getrxaddr",
+		"getrxaddr: Returns the radio's receive address.\r\n",
+		prvGetRxAddrCommand,
+		0
 };
 
 CLI_Command_Definition_t gettxaddr = {
-	"gettxaddr",
-	"gettxaddr: Returns the radio's transmit address.\r\n",
-	prvGetTxAddrCommand,
-	0
+		"gettxaddr",
+		"gettxaddr: Returns the radio's transmit address.\r\n",
+		prvGetTxAddrCommand,
+		0
 };
 
 CLI_Command_Definition_t join = {
-	"join",
-	"join: Sends a join request packet via radio.\r\n",
-	prvJoinCommand,
-	0
+		"join",
+		"join: Sends a join request packet via radio.\r\n",
+		prvJoinCommand,
+		0
 };
 
 CLI_Command_Definition_t xyz = {
-	"xyz",
-	"xyz: Sends an XYZ packet via radio.\r\n",
-	prvXYZCommand,
-	3
+		"xyz",
+		"xyz: Sends an XYZ packet via radio.\r\n",
+		prvXYZCommand,
+		3
 };
 
 CLI_Command_Definition_t move = {
-	"move",
-	"move: Moves the pen to the given position via radio packet.\r\n",
-	prvMoveCommand,
-	2
+		"move",
+		"move: Moves the pen to the given position via radio packet.\r\n",
+		prvMoveCommand,
+		2
 };
 
 CLI_Command_Definition_t pen = {
-	"pen",
-	"pen: Moves the pen up or down via radio packet.\r\n",
-	prvPenCommand,
-	1
+		"pen",
+		"pen: Moves the pen up or down via radio packet.\r\n",
+		prvPenCommand,
+		1
 };
 
 CLI_Command_Definition_t origin = {
-	"origin",
-	"origin: Moves the pen to the origin (0, 0, 0) via radio packet.\r\n",
-	prvOriginCommand,
-	0
+		"origin",
+		"origin: Moves the pen to the origin (0, 0, 0) via radio packet.\r\n",
+		prvOriginCommand,
+		0
 };
 
 CLI_Command_Definition_t line = {
-	"line",
-	"line: Draws a line from (x1, y1), either horizontal or vertical, of specified length.\r\n",
-	prvLineCommand,
-	4
+		"line",
+		"line: Draws a line from (x1, y1), either horizontal or vertical, of specified length.\r\n",
+		prvLineCommand,
+		4
 };
 
 CLI_Command_Definition_t square = {
-	"square",
-	"square: Draws a square from (x1, y1) of specified length.\r\n",
-	prvSquareCommand,
-	3
+		"square",
+		"square: Draws a square from (x1, y1) of specified length.\r\n",
+		prvSquareCommand,
+		3
 };
 
 CLI_Command_Definition_t bline = {
-	"bline",
-	"bline: Draws a line from (x1, y1) to (x2, y2) using Bresenham's algorithm.\r\n",
-	prvBlineCommand,
-	5
+		"bline",
+		"bline: Draws a line from (x1, y1) to (x2, y2) using Bresenham's algorithm.\r\n",
+		prvBlineCommand,
+		5
 };
 
 

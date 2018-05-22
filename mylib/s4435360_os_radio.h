@@ -19,7 +19,7 @@
 #include "queue.h"
 
 #define DEFAULT_UP_Z_VALUE 			0
-#define DEFAULT_DOWN_Z_VALUE 		30
+#define DEFAULT_DOWN_Z_VALUE 		10
 
 typedef struct {
 	char payload[11];

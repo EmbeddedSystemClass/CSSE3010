@@ -29,14 +29,28 @@
 #define DAC_Y_DATA_GPIO_PIN                     BRD_D13_PIN
 #define DAC_CHANNEL_Y							DAC_CHANNEL_2
 
+//DAC sequence definitions
+#define DAC_SEQUENCE_ON							1
+#define DAC_SEQUENCE_OFF						0
+
 //DAC config variables
 DAC_HandleTypeDef dacHandle;
 DAC_ChannelConfTypeDef dacChannelConfig;
+
+//DAC sequence variables
+int* dacXSequence;
+int* dacYSequence;
+int dacXSequenceLength;
+int dacYSequenceLength;
+TIM_HandleTypeDef dacTimInit;
 
 extern void s4435360_hal_dac_init(void);
 
 #define s4435360_hal_dac_x_write(value) 	HAL_DAC_SetValue(&dacHandle, DAC_CHANNEL_X, DAC_ALIGN_12B_R, value)
 #define s4435360_hal_dac_y_write(value)		HAL_DAC_SetValue(&dacHandle, DAC_CHANNEL_Y, DAC_ALIGN_12B_R, value)
+
+#define s4435360_hal_dac_sequence_on() 		HAL_TIM_Base_Start_IT(&dacTimInit);
+#define s4435360_hal_dac_sequence_off()		HAL_TIM_Base_Stop_IT(&dacTimInit);
 
 #endif
 

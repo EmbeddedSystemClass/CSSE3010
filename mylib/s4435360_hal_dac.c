@@ -13,10 +13,18 @@
 /* Includes ------------------------------------------------------------------*/
 #include <s4435360_hal_dac.h>
 
+
+#include "stm32f4xx_hal_dac.h"
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
+#define __TIM_DAC_CLK_ENABLE() 		__TIM2_CLK_ENABLE()
+#define DAC_TIM						TIM2
+#define DAC_FREQUENCY				2
+#define DAC_TIM_IRQn				TIM2_IRQn
+#define DAC_GPIO_AF					GPIO_AF1_TIM2
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+int dacSequenceIndex;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
@@ -59,4 +67,39 @@ extern void s4435360_hal_dac_init(void) {
 	//Start both channels
 	HAL_DAC_Start(&dacHandle, DAC_CHANNEL_X);
 	HAL_DAC_Start(&dacHandle, DAC_CHANNEL_Y);
+
+
+	//Initialise timer to run DAC sequence
+	__TIM_DAC_CLK_ENABLE();
+
+	/* TIM Base configuration */
+	dacTimInit.Instance = DAC_TIM;
+	dacTimInit.Init.Period = 50000 / (DAC_FREQUENCY);
+	dacTimInit.Init.Prescaler = (uint16_t) (SystemCoreClock / 50000) - 1;	//Set prescaler value
+	dacTimInit.Init.ClockDivision = 0;			//Set clock division
+	dacTimInit.Init.RepetitionCounter = 0;	// Set reload Value
+	dacTimInit.Init.CounterMode = TIM_COUNTERMODE_UP;	//Set timer to count up.
+
+	/* Initialise Timer */
+	HAL_TIM_Base_Init(&dacTimInit);
+	HAL_NVIC_SetPriority(DAC_TIM_IRQn, 10, 0);
+	HAL_NVIC_EnableIRQ(DAC_TIM_IRQn);
+
+	dacSequenceIndex = 0;
+
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	s4435360_hal_dac_y_write(dacYSequence[dacSequenceIndex % dacYSequenceLength]);
+	s4435360_hal_dac_x_write(dacXSequence[dacSequenceIndex % dacXSequenceLength]);
+	dacSequenceIndex++;
+}
+
+/**
+ * @brief  DAC sequence timer handler
+ * @param  None
+ * @retval None
+ */
+void TIM2_IRQHandler(void) {
+	HAL_TIM_IRQHandler(&dacTimInit);
 }

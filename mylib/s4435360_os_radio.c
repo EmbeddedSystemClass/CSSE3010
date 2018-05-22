@@ -181,7 +181,7 @@ extern void s4435360_TaskRadio(void) {
 			myprintf("peeked\r\n");
 			//Check previous ack process has finished
 			if(xSemaphoreTake(transmitSemaphore, 10)) {
-				myprintf("taken\r\n");
+				//myprintf("taken\r\n");
 				xQueueReceive(txMessageQueue, &toSend, 10);
 				//Send payload message
 				memset(&s4435360_tx_buffer[0], 0, 32);
@@ -198,7 +198,7 @@ extern void s4435360_TaskRadio(void) {
 				xTaskCreate((void *) &Acknowledgment_Task, (const char *) "ACK",
 						ACKNOWLEDGEMENT_STACK_SIZE, NULL, ACKNOWLEDGEMENT_TASK_PRIORITY, &ackTask);
 				//xSemaphoreGive(transmitSemaphore);
-				myprintf("Created new task\r\n");
+				//myprintf("Created new task\r\n");
 
 			}
 		}
@@ -241,17 +241,13 @@ extern void s4435360_TaskRadio(void) {
 
 void Acknowledgment_Task(void) {
 	myprintf("Inside ack\r\n");
+
 	//Block for ERR or ACK, 3 second timeout
 	EventBits_t eventBits = xEventGroupWaitBits(ackctrl_EventGroup, EVT_ACK | EVT_ERR,	pdTRUE,	pdFALSE, 3000);
 
-	vTaskDelay(1000);
 
 	//ACK received in 3 seconds
 	if((eventBits & EVT_ACK) != 0) {
-		//if(retransmitMessage.isXYZ) {
-		//	xSemaphoreGive(s4435360_SemaphoreUpdatePantilt);
-		//}
-		myprintf("Inside ack handler\r\n");
 		xSemaphoreGive(transmitSemaphore);
 	} else if ((eventBits & EVT_ERR) != 0) {
 		//ERR received
@@ -259,6 +255,7 @@ void Acknowledgment_Task(void) {
 		retransmitMessage.retransmitAttempts = 0;
 		xQueueSendToFront(txMessageQueue, (void*) &retransmitMessage, portMAX_DELAY);
 
+		xSemaphoreGive(transmitSemaphore);
 	} else {
 		//ACK not received - retransmit
 		if(retransmitMessage.retransmitAttempts < 2) {
@@ -268,9 +265,9 @@ void Acknowledgment_Task(void) {
 		} else {
 			myprintf("Giving up after 3 attempts\r\n");
 		}
+
+		xSemaphoreGive(transmitSemaphore);
 	}
 
-	myprintf("Semaphore give\r\n");
-	xSemaphoreGive(transmitSemaphore);
 	vTaskDelete(ackTask);
 }
