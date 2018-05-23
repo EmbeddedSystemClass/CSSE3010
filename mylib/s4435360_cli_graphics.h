@@ -1,9 +1,9 @@
 /**
  ******************************************************************************
- * @file    mylib/s4435360_cli_radio.h
+ * @file    mylib/s4435360_cli_graphics.h
  * @author  Samuel Eadie - 44353607
- * @date    14052018
- * @brief   Provides CLI commands for radio
+ * @date    24052018
+ * @brief   Provides CLI commands for graphics
  *
  ******************************************************************************
  *     EXTERNAL FUNCTIONS
@@ -12,13 +12,14 @@
  ******************************************************************************
  */
 
-#ifndef S4435360_CLI_RADIO_H
-#define S4435360_CLI_RADIO_H
+#ifndef S4435360_CLI_GRAPHICS_H
+#define S4435360_CLI_GRAPHICS_H
 
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "semphr.h"
 
-void register_radio_CLI_commands(void);
+void register_graphics_CLI_commands(void);
 
 #endif
+

@@ -34,7 +34,7 @@
 #include "s4435360_hal_dac.h"
 #include "s4435360_os_dac.h"
 #include "stm32f4xx_hal_dac.h"
-
+#include "s4435360_os_control.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -48,12 +48,14 @@ void CLI_Task(void);
 #define PRINTF_TASK_PRIORITY	( tskIDLE_PRIORITY + 2 )
 #define PANTILT_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
 #define DAC_TASK_PRIORITY		( tskIDLE_PRIORITY + 2 )
+#define CONTROL_TASK_PRIORITY	( tskIDLE_PRIORITY + 2 )
 /* Task Stack Allocations -----------------------------------------------------*/
 #define CLI_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE * 5 )
 #define RADIO_TASK_STACK_SIZE 	( configMINIMAL_STACK_SIZE * 5 )
 #define PRINTF_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE * 5 )
 #define PANTILT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE * 5 )
 #define DAC_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE * 5 )
+#define CONTROL_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE * 5 )
 
 
 static BaseType_t prvPantiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
@@ -104,6 +106,8 @@ int main( void ) {
 			RADIO_TASK_STACK_SIZE, NULL, RADIO_TASK_PRIORITY, NULL);
 	xTaskCreate( (void *) &s4435360_TaskPrintf, (const char *) "PRINTF",
 			PRINTF_TASK_STACK_SIZE, NULL, PRINTF_TASK_PRIORITY, NULL);
+	xTaskCreate( (void *) &s4435360_TaskControl, (const char *) "CONTROL",
+				CONTROL_TASK_STACK_SIZE, NULL, CONTROL_TASK_PRIORITY, NULL);
 	//xTaskCreate( (void *) &s4435360_TaskPanTilt, (const char *) "PANTILT",
 	//		PANTILT_TASK_STACK_SIZE, NULL, PANTILT_TASK_PRIORITY, NULL);
 	//xTaskCreate((void*) &s4435360_DACTask, (const char*) "DAC",

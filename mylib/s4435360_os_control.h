@@ -1,9 +1,9 @@
 /**
  ******************************************************************************
- * @file    mylib/s4435360_cli_radio.h
+ * @file    mylib/s4435360_os_control.h
  * @author  Samuel Eadie - 44353607
- * @date    14052018
- * @brief   Provides CLI commands for radio
+ * @date    240518
+ * @brief   Controller for project 2
  *
  ******************************************************************************
  *     EXTERNAL FUNCTIONS
@@ -12,13 +12,25 @@
  ******************************************************************************
  */
 
-#ifndef S4435360_CLI_RADIO_H
-#define S4435360_CLI_RADIO_H
+#ifndef S4435360_OS_CONTROL_H
+#define S4435360_OS_CONTROL_H
 
 #include "FreeRTOS.h"
 #include "queue.h"
-#include "semphr.h"
 
-void register_radio_CLI_commands(void);
+typedef enum CommandType{origin, line, square, bline, polygon} CommandType;
+
+#define DEFAULT_UP_Z_VALUE 			0
+#define DEFAULT_DOWN_Z_VALUE 		30
+
+QueueHandle_t s4435360_QueueCommands;
+
+typedef struct {
+	CommandType type;
+	int args[5];
+} Command;
+
+void s4435360_TaskControl(void);
 
 #endif
+

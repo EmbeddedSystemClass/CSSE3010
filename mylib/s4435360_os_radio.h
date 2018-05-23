@@ -42,7 +42,8 @@ extern void s4435360_TaskRadio(void);
 void send_radio_message(char* payload, int payloadLength, int retransmitAttempts, int waitTime, int isXYZ);
 
 void send_XYZ_message(int x, int y, int z, int waitTime);
-
+void send_Z_message(int z, int waitTime);
+void send_XZ_message(int x, int y, int waitTime);
 void send_join_message(int waitTime);
 
 

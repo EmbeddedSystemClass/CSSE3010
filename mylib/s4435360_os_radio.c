@@ -253,7 +253,7 @@ void Acknowledgment_Task(void) {
 		xSemaphoreGive(transmitSemaphore);
 
 	} else {
-		vTaskDelay(100);
+		//vTaskDelay(100);
 		retransmitMessage.retransmitAttempts++;
 		xQueueSendToFront(txMessageQueue, (void*) &retransmitMessage, portMAX_DELAY);
 
