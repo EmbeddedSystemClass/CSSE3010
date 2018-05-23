@@ -34,10 +34,12 @@
 #include "event_groups.h"
 #include "board.h"
 #include "stm32f4xx_hal.h"
+#include <math.h>
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
+#define PI				3.14159265359
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -165,7 +167,7 @@ static BaseType_t prvXYZCommand(char *pcWriteBuffer, size_t xWriteBufferLen, con
 	const char* yString = FreeRTOS_CLIGetParameter(pcCommandString, 2, &yLen);
 	const char* zString = FreeRTOS_CLIGetParameter(pcCommandString, 3, &zLen);
 
-	char* xRemainder, yRemainder, zRemainder;
+	char* xRemainder, *yRemainder, *zRemainder;
 	long x = strtol(xString, &xRemainder, 10);
 	long y = strtol(yString, &yRemainder, 10);
 	long z = strtol(zString, &zRemainder, 10);
@@ -184,7 +186,7 @@ static BaseType_t prvMoveCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
 	const char* xString = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xLen);
 	const char* yString = FreeRTOS_CLIGetParameter(pcCommandString, 2, &yLen);
 
-	char* xRemainder, yRemainder;
+	char* xRemainder, *yRemainder;
 	long x = strtol(xString, &xRemainder, 10);
 	long y = strtol(yString, &yRemainder, 10);
 
@@ -231,7 +233,7 @@ static BaseType_t prvLineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
 	const char* typeString = FreeRTOS_CLIGetParameter(pcCommandString, 3, &typeLen);
 	const char* lengthString = FreeRTOS_CLIGetParameter(pcCommandString, 4, &lengthLen);
 
-	char* xRemainder, yRemainder, lengthRemainder;
+	char* xRemainder, *yRemainder, *lengthRemainder;
 	long x = strtol(xString, &xRemainder, 10);
 	long y = strtol(yString, &yRemainder, 10);
 	long length = strtol(lengthString, &lengthRemainder, 10);
@@ -262,7 +264,7 @@ static BaseType_t prvSquareCommand(char *pcWriteBuffer, size_t xWriteBufferLen, 
 	const char* yString = FreeRTOS_CLIGetParameter(pcCommandString, 2, &yLen);
 	const char* sideString = FreeRTOS_CLIGetParameter(pcCommandString, 3, &sideLen);
 
-	char* xRemainder, yRemainder, sideRemainder;
+	char* xRemainder, *yRemainder, *sideRemainder;
 	long x = strtol(xString, &xRemainder, 10);
 	long y = strtol(yString, &yRemainder, 10);
 	long side = strtol(sideString, &sideRemainder, 10);
@@ -273,8 +275,80 @@ static BaseType_t prvSquareCommand(char *pcWriteBuffer, size_t xWriteBufferLen, 
 	send_XYZ_message(x, y, DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
 	send_XY_message(x + side, y + side, portMAX_DELAY);
 	send_XY_message(x, y, portMAX_DELAY);
+
+	return pdFALSE;
 }
 
+void bline_low(int x1, int y1, int x2, int y2, int stepSize) {
+	int dx = x2 - x1;
+	int dy = y2 - y1 > 0 ? y2 - y1 : y1 - y2;
+	int deltay = y2 - y1 > 0 ? 1 : -1;
+	int xi = x1;
+	int yi = y1;
+	int D = (2 * dy) - dx;
+
+	for(int i = 0; i < dx; i++) {
+		if(!(i % stepSize)) {
+			send_XYZ_message(xi, yi, DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
+		}
+
+		if(D > 0) {
+			yi += deltay;
+			D -= (2 * dx);
+		}
+
+		D += (2 * dy);
+		xi += 1;
+	}
+
+	send_XYZ_message(x2, y2, DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+}
+
+void bline_high(int x1, int y1, int x2, int y2, int stepSize) {
+	int dx = x2 - x1 > 0 ? x2 - x1 : x1 - x2;
+	int dy = y2 - y1;
+	int deltax = x2 - x1 > 0 ? 1 : -1;
+	int xi = x1;
+	int yi = y1;
+	int D = (2 * dx) - dy;
+
+	for(int i = 0; i < dy; i++) {
+		if(!(i % stepSize)) {
+			send_XYZ_message(xi, yi, DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
+		}
+
+		if(D > 0) {
+			xi += deltax;
+			D -= (2 * dy);
+		}
+
+		D += (2 * dx);
+		yi+=1;
+	}
+
+	send_XYZ_message(x2, y2, DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+}
+
+void bresenham_line(int x1, int y1, int x2, int y2, int stepSize) {
+	if(((y2 - y1)*(y2 - y1)) < ((x2 - x1)*(x2 - x1))) {
+			if(x1 > x2) {
+				myprintf("1\r\n");
+				bline_low(x2, y2, x1, y1, stepSize);
+			} else {
+				myprintf("2\r\n");
+				bline_low(x1, y1, x2, y2, stepSize);
+			}
+		} else {
+			if(y1 > y2) {
+				myprintf("3\r\n");
+				bline_high(x2, y2, x1, y1, stepSize);
+			} else {
+				myprintf("4\r\n");
+				bline_high(x1, y1, x2, y2, stepSize);
+			}
+		}
+
+}
 static BaseType_t prvBlineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	/* Get parameters from command string */
@@ -298,78 +372,73 @@ static BaseType_t prvBlineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, c
 	//}
 
 	//Bresenham Line Generation
-	//send_join_message(portMAX_DELAY);
-	//send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
-	//send_XYZ_message(x1, y1, DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
-	//myprintf("(%d, %d)\r\n", x1, y1); //
-	if(abs(y2 - y1) < abs(x2 - x1)) {
-		if(x1 > x2) {
-			bline_low(x2, y2, x1, y1, stepSize);
-		} else {
-			bline_low(x1, y1, x2, y2, stepSize);
-		}
-	} else {
-		if(y1 > y2) {
-			bline_high(x2, y2, x1, y1, stepSize);
-		} else {
-			bline_high(x1, y1, x2, y2, stepSize);
-		}
-	}
+	send_join_message(portMAX_DELAY);
+	send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+
+	bresenham_line(x1, y1, x2, y2, stepSize);
+
 
 	return pdFALSE;
 
 }
 
-void bline_low(int x1, int y1, int x2, int y2, int stepSize) {
+void n_polygon(int n, int x1, int y1, int radius) {
+	int x[n];
+	int y[n];
+	float thetaOffset = ((n - 2) * PI) / 2; //Straighten bottom side
+	float centeringOffsetX = radius * cos(thetaOffset / 2);
+	float centeringOffsetY = radius * sin(thetaOffset / 2);
 
-	int dx = x2 - x1;
-	int dy = y2 - y1 > 0 ? y2 - y1 : y1 - y2;
-	int deltay = y2 - y1 > 0 ? 1 : -1;
-	int xi = x1;
-	int yi = y1;
-	int D = (2 * dy) - dx;
+	myprintf("%f, %f\r\n", centeringOffsetX, centeringOffsetY);
 
-	for(int i = 0; i < dx; i++) {
-		if(!(i % stepSize)) {
-				myprintf("(%d, %d)\r\n", xi, yi); //send_XY_message(xi, yi, portMAX_DELAY);
+	//Calculate points in polygon
+	for(int i = 0; i < n; i++) {
+		x[i] = radius * cos(((2 * PI * i) - thetaOffset) / n) + x1 + centeringOffsetX;
+		y[i] = radius * sin(((2 * PI * i) - thetaOffset) / n) + y1 + centeringOffsetY;
+		myprintf("(%d, %d)\r\n", x[i], y[i]);
+
+		//Check calculated points are on 200x200 board
+		if((x[i] > 200) || (x[i] < 0) || (y[i] > 200) || (y[i] < 0)) {
+			myprintf("Entered polygon exceeds board dimensions");
+			return;
 		}
-		if(D > 0) {
-			yi += deltay;
-			D -= (2 * dx);
-		}
-
-		D += (2 * dy);
-		xi++;
-		vTaskDelay(200);
 	}
 
-	myprintf("(%d, %d)\r\n", x2, y2); //send_XYZ_message(x2, y2, DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+	//Use Bresenham to draw line between points
+	for(int i = 0; i < n - 1; i++) {
+		bresenham_line(x[i], y[i], x[i+1], y[i+1], radius / 10);
+	}
+
+	//Return to start
+	bresenham_line(x[n-1], y[n-1], x[0], y[0], radius / 10);
 }
 
-void bline_high(int x1, int y1, int x2, int y2, int stepSize) {
-	int dx = x2 - x1 > 0 ? x2 - x1 : x1 - x2;
-	int dy = y2 - y1;
-	int deltax = x2 - x1 > 0 ? 1 : -1;
-	int xi = x1;
-	int yi = y1;
-	int D = (2 * dx) - dy;
+static BaseType_t prvNPolygonCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
-	for(int i = 0; i < dy; i++) {
-		if(!(i % stepSize)) {
-				myprintf("(%d, %d)\r\n", xi, yi); //send_XY_message(xi, yi, portMAX_DELAY);
-			}
+	/* Get parameters from command string */
+	long nLen, x1Len, y1Len, radiusLen;
+	const char* nString = FreeRTOS_CLIGetParameter(pcCommandString, 1, &nLen);
+	const char* x1String = FreeRTOS_CLIGetParameter(pcCommandString, 2, &x1Len);
+	const char* y1String = FreeRTOS_CLIGetParameter(pcCommandString, 3, &y1Len);
+	const char* radiusString = FreeRTOS_CLIGetParameter(pcCommandString, 4, &radiusLen);
 
-		if(D > 0) {
-			xi += deltax;
-			D -= (2 * dy);
-		}
+	char* nRemainder, *x1Remainder, *y1Remainder, *radiusRemainder;
+	long n = strtol(nString, &nRemainder, 10);
+	long x1 = strtol(x1String, &x1Remainder, 10);
+	long y1 = strtol(y1String, &y1Remainder, 10);
+	long radius = strtol(radiusString, &radiusRemainder, 10);
 
-		D += (2 * dx);
-		yi++;
-		vTaskDelay(200);
-	}
+	//if(strlen(x1Remainder) || strlen(y1Remainder) ||
+	//		strlen(x2Remainder) || strlen(y2Remainder)) {
+	//	return pdFALSE;
+	//}
 
-	myprintf("(%d, %d)\r\n", x2, y2); //send_XYZ_message(x2, y2, DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+	send_join_message(portMAX_DELAY);
+	send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+	n_polygon(n, x1, y1, radius);
+
+	return pdFALSE;
+
 }
 
 
@@ -498,6 +567,13 @@ CLI_Command_Definition_t bline = {
 		5
 };
 
+CLI_Command_Definition_t polygon = {
+		"polygon",
+		"polygon: Draws an n-sided regular polygon of specified radius starting at (x1, y1).\r\n",
+		prvNPolygonCommand,
+		4
+};
+
 
 void register_radio_CLI_commands(void) {
 
@@ -517,4 +593,5 @@ void register_radio_CLI_commands(void) {
 	FreeRTOS_CLIRegisterCommand(&line);
 	FreeRTOS_CLIRegisterCommand(&square);
 	FreeRTOS_CLIRegisterCommand(&bline);
+	FreeRTOS_CLIRegisterCommand(&polygon);
 }

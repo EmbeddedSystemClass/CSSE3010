@@ -106,8 +106,8 @@ int main( void ) {
 			PRINTF_TASK_STACK_SIZE, NULL, PRINTF_TASK_PRIORITY, NULL);
 	//xTaskCreate( (void *) &s4435360_TaskPanTilt, (const char *) "PANTILT",
 	//		PANTILT_TASK_STACK_SIZE, NULL, PANTILT_TASK_PRIORITY, NULL);
-	xTaskCreate((void*) &s4435360_DACTask, (const char*) "DAC",
-			DAC_TASK_STACK_SIZE, NULL, DAC_TASK_PRIORITY, NULL);
+	//xTaskCreate((void*) &s4435360_DACTask, (const char*) "DAC",
+	//		DAC_TASK_STACK_SIZE, NULL, DAC_TASK_PRIORITY, NULL);
 	/* Register CLI commands */
 	register_radio_CLI_commands();
 	FreeRTOS_CLIRegisterCommand(&pantilt);
