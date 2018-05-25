@@ -63,7 +63,7 @@ void move_square(int x, int y, int side) {
 	send_XY_message(x + side, y + side, portMAX_DELAY);
 
 	//Return to start
-	send_XY_message(x, y, portMAX_DELAY);
+	send_XYZ_message(x, y, DEFAULT_UP_Z_VALUE, portMAX_DELAY);
 
 }
 
