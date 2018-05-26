@@ -42,6 +42,8 @@
 #define RX_TIM							TIM2
 #define RX_TIM_CHANNEL					TIM_CHANNEL_4
 
+int receivedIRFlag;
+int irCommand;
 
 void irhal_carrier(int state);
 
@@ -74,6 +76,8 @@ void irhal_carrier(int state);
 #define s4435360_hal_ir_datamodulation_clr() HAL_GPIO_WritePin(MODULATION_PORT, MODULATION_PIN, 0)
 
 void s4435360_hal_ir_init(void);
+
+void s4435360_hal_ir_rx_init(void);
 
 
 #endif

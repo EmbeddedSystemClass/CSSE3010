@@ -25,6 +25,139 @@ TIM_HandleTypeDef rx_TIM_Init;
 TIM_IC_InitTypeDef sICConfig;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
+uint32_t PrescalerValue;
+void s4435360_hal_ir_rx_init(void) {
+
+	/* Initialise receive pin */
+	GPIO_InitTypeDef GPIO_InitStructure;
+	__TIM2_CLK_ENABLE();
+	__BRD_D35_GPIO_CLK();
+
+	GPIO_InitStructure.Pin = BRD_D35_PIN;
+	GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;
+	GPIO_InitStructure.Pull = GPIO_NOPULL;
+	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_MEDIUM;
+	GPIO_InitStructure.Alternate = GPIO_AF1_TIM2;
+
+	HAL_GPIO_Init(BRD_D35_GPIO_PORT, &GPIO_InitStructure);
+	HAL_NVIC_SetPriority(TIM2_IRQn, 0x0F, 0x00);
+	HAL_NVIC_EnableIRQ(TIM2_IRQn);
+
+	/* Calculate prescalar value */
+	PrescalerValue = (uint16_t) ((SystemCoreClock / 2) / 50000) - 1;
+
+	//TIM Base configuration
+	rx_TIM_Init.Instance = TIM2;
+	rx_TIM_Init.Init.Period = 0xFFFF; //Minimise update events
+	rx_TIM_Init.Init.Prescaler = PrescalerValue;
+	rx_TIM_Init.Init.ClockDivision = 0;
+	rx_TIM_Init.Init.RepetitionCounter = 0;
+	rx_TIM_Init.Init.CounterMode = TIM_COUNTERMODE_UP;
+
+	if (HAL_TIM_IC_Init(&rx_TIM_Init) != HAL_OK) {
+		debug_printf("Initialisation Error: IR Receiver "
+				"Timer Pin D35\r\n");
+	}
+
+	// Configure the Input Capture channel
+	sICConfig.ICPolarity = TIM_ICPOLARITY_FALLING; //Trigger on both edges
+	sICConfig.ICSelection = TIM_ICSELECTION_DIRECTTI;
+	sICConfig.ICPrescaler = TIM_ICPSC_DIV1;
+	sICConfig.ICFilter = 0;
+	if (HAL_TIM_IC_ConfigChannel(&rx_TIM_Init, &sICConfig, TIM_CHANNEL_4)
+			!= HAL_OK) {
+		debug_printf("Initialisation Error: IR Receiver "
+				"Input Capture Pin D35\r\n");
+	}
+
+	// Start the Input Capture in interrupt mode
+	if (HAL_TIM_IC_Start_IT(&rx_TIM_Init, TIM_CHANNEL_4) != HAL_OK) {
+		debug_printf("Initialisation Error: IR Receiver Input "
+				"Capture Start Pin D35\r\n");
+	}
+
+	receivedIRFlag = 0;
+	irCommand = 0;
+}
+
+int stage = 0;
+uint32_t lastCaptureValue = 0;
+
+/**
+ * @brief Callback routine for input compare matches for IR receiver
+ * @param htim: the timer handler of the triggering timer
+ * @retval None
+ */
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim) {
+
+	/* Check the triggering timer channel */
+	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4) {
+
+		//Record capture compare
+		uint32_t currentCaptureValue = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_4);
+
+		//Calculate compare difference
+		uint32_t captureValueDifference;
+		if (currentCaptureValue > lastCaptureValue) {
+			captureValueDifference = (currentCaptureValue - lastCaptureValue);
+		} else if (lastCaptureValue < currentCaptureValue) {
+			captureValueDifference = ((0xFFFF - lastCaptureValue) + currentCaptureValue) + 1;
+		}
+
+
+		//debug_printf("%d", stage);
+
+		if(stage == 0) {
+			lastCaptureValue = currentCaptureValue;
+		}
+
+		if(stage == 1) {
+			//debug_printf("(%d)", captureValueDifference);
+			if(captureValueDifference < 1200) {
+				stage = 0;
+			} else {
+				stage++;
+			}
+		} else if(stage < 17) {
+			//irCommand = 0;
+			stage++;
+		} else if(stage == 17) {
+			lastCaptureValue = currentCaptureValue;
+			stage++;
+		} else if(stage < 25){
+
+			stage++;
+
+			//debug_printf("%d, ", captureValueDifference);
+
+			if(captureValueDifference  > 150) {
+				irCommand = (irCommand << 1) + 1;
+			} else if (captureValueDifference < 300){
+				irCommand = (irCommand << 1);
+			}
+
+			lastCaptureValue = currentCaptureValue;
+
+		} else {
+			stage++;
+		}
+
+		if(stage == 34) {
+			receivedIRFlag = 1;
+			stage = 0;
+		}
+
+	}
+}
+
+/**
+ * @brief TIM2 handler, rx input capture timer
+ * @param None
+ * @retval None
+ */
+void TIM2_IRQHandler(void) {
+	HAL_TIM_IRQHandler(&rx_TIM_Init);
+}
 
 /**
  * @brief Initialises infrared communication hardware
@@ -138,19 +271,19 @@ void irhal_carrier(int state) {
 	/* Switch on state */
 	switch(state) {
 
-		case CARRIER_ON:
+	case CARRIER_ON:
 
-			/* Enable carrier wave */
-			__HAL_TIM_ENABLE(&CARRIER_TIMER_HANDLER);
-			break;
+		/* Enable carrier wave */
+		__HAL_TIM_ENABLE(&CARRIER_TIMER_HANDLER);
+		break;
 
-		case CARRIER_OFF:
+	case CARRIER_OFF:
 
-			/*Disable carrier wave */
-			__HAL_TIM_DISABLE(&CARRIER_TIMER_HANDLER);
-			break;
+		/*Disable carrier wave */
+		__HAL_TIM_DISABLE(&CARRIER_TIMER_HANDLER);
+		break;
 
-		default:
-			break;
+	default:
+		break;
 	}
 }

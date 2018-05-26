@@ -45,6 +45,8 @@ void send_XYZ_message(int x, int y, int z, int waitTime);
 void send_Z_message(int z, int waitTime);
 void send_XZ_message(int x, int y, int waitTime);
 void send_join_message(int waitTime);
+void send_X_increment_message(int increment, int waitTime);
+void send_Y_increment_message(int increment, int waitTime);
 
 
 #endif

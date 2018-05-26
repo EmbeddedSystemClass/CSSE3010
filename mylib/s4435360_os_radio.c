@@ -107,10 +107,17 @@ void send_XYZ_message(int x, int y, int z, int waitTime) {
 	lastY = y;
 	lastZ = z;
 
-	//s4435360_pantilt_changeX(x);
-	//s4435360_pantilt_changeY(y);
-
 	send_radio_message(xyzPayload, 11, 0, waitTime, 1);
+}
+
+void send_X_increment_message(int increment, int waitTime) {
+	lastX += increment;
+	send_XYZ_message(lastX, lastY, lastZ, waitTime);
+}
+
+void send_Y_increment_message(int increment, int waitTime) {
+	lastY += increment;
+	send_XYZ_message(lastX, lastY, lastZ, waitTime);
 }
 
 void send_Z_message(int z, int waitTime) {

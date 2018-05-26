@@ -35,6 +35,7 @@
 #include "s4435360_os_dac.h"
 #include "stm32f4xx_hal_dac.h"
 #include "s4435360_os_control.h"
+#include "s4435360_os_ir.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -49,6 +50,7 @@ void CLI_Task(void);
 #define PANTILT_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
 #define DAC_TASK_PRIORITY		( tskIDLE_PRIORITY + 2 )
 #define CONTROL_TASK_PRIORITY	( tskIDLE_PRIORITY + 2 )
+#define IR_TASK_PRIORITY		( tskIDLE_PRIORITY + 3 )
 /* Task Stack Allocations -----------------------------------------------------*/
 #define CLI_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE * 5 )
 #define RADIO_TASK_STACK_SIZE 	( configMINIMAL_STACK_SIZE * 5 )
@@ -56,6 +58,7 @@ void CLI_Task(void);
 #define PANTILT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE * 5 )
 #define DAC_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE * 5 )
 #define CONTROL_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE * 5 )
+#define IR_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE * 3 )
 
 
 static BaseType_t prvPantiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
@@ -66,7 +69,7 @@ static BaseType_t prvPantiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen,
 	const char* xString = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xLen);
 	const char* yString = FreeRTOS_CLIGetParameter(pcCommandString, 2, &yLen);
 
-	char* xRemainder, yRemainder;
+	char* xRemainder, *yRemainder;
 	long x = strtol(xString, &xRemainder, 10);
 	long y = strtol(yString, &yRemainder, 10);
 
@@ -108,6 +111,8 @@ int main( void ) {
 			PRINTF_TASK_STACK_SIZE, NULL, PRINTF_TASK_PRIORITY, NULL);
 	xTaskCreate( (void *) &s4435360_TaskControl, (const char *) "CONTROL",
 				CONTROL_TASK_STACK_SIZE, NULL, CONTROL_TASK_PRIORITY, NULL);
+	xTaskCreate( (void *) &s4435360_IRTask, (const char *) "IR",
+			IR_TASK_STACK_SIZE, NULL, IR_TASK_PRIORITY, NULL);
 	//xTaskCreate( (void *) &s4435360_TaskPanTilt, (const char *) "PANTILT",
 	//		PANTILT_TASK_STACK_SIZE, NULL, PANTILT_TASK_PRIORITY, NULL);
 	//xTaskCreate((void*) &s4435360_DACTask, (const char*) "DAC",
