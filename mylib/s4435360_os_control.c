@@ -170,6 +170,36 @@ void n_polygon(int n, int x1, int y1, int radius) {
 	bresenham_line(x[n-1], y[n-1], x[0], y[0], radius / 10);
 }
 
+void compass_rose(int x1, int y1, int sideLength, int increment) {
+	int x[6] = {sideLength, 1.5 * sideLength, sideLength, 0, -0.5 * sideLength, 0};
+	int y[6] = {0, 0.866 * sideLength, 1.732 * sideLength, 1.732 * sideLength, 0.866 * sideLength, 0};
+	int startAngle[6] = {60, 120, 180, 240, 300, 0};
+	int endAngle[6] = {180, 240, 300, 360, 420, 120};
+
+	//Check points in polygon are on 200x200
+	for(int i = 0; i < 6; i++) {
+		myprintf("(%d, %d)\r\n", x1 + x[i], y1 + y[i]);
+		if((x1 + x[i] > 200) || (x1 + x[i] < 0) || (y1 + y[i] > 200) || (y1 + y[i] < 0)) {
+			myprintf("Entered compass roses exceeds board dimensions");
+			return;
+		}
+	}
+
+	//For each corner of hexagon
+	for(int i = 0; i < 6; i++) {
+		send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
+
+		int xj, yj;
+		//Draw arc segment
+		for(int j = startAngle[i]; j <= endAngle[i]; j += increment) {
+			xj = (sideLength * cos((PI * j) / 180)) + x[i] + x1;
+			yj = (sideLength * sin((PI * j) / 180)) + y[i] + y1;
+
+			send_XYZ_message(xj, yj, DEFAULT_DOWN_Z_VALUE, portMAX_DELAY);
+		}
+	}
+}
+
 void s4435360_TaskControl(void) {
 
 	s4435360_QueueCommands = xQueueCreate(COMMAND_QUEUE_LENGTH, sizeof(Command));
@@ -207,6 +237,12 @@ void s4435360_TaskControl(void) {
 					send_join_message(portMAX_DELAY);
 					send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
 					n_polygon(command.args[0], command.args[1],
+							command.args[2], command.args[3]);
+					break;
+
+				case rose:
+					send_join_message(portMAX_DELAY);
+					compass_rose(command.args[0], command.args[1],
 							command.args[2], command.args[3]);
 					break;
 

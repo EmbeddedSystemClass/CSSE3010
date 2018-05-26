@@ -97,7 +97,7 @@ class PlotterView(object):
                 self._gcode_button.pack(side = tk.LEFT)
 
                 #Plotter plane
-                self._plotter_canvas = tk.Canvas(master, bg = 'white')
+                self._plotter_canvas = tk.Canvas(master, bg = 'white', height = 1000, width = 1000)
                 self._plotter_canvas.pack(side = tk.TOP)
 
                        
@@ -140,11 +140,11 @@ class PlotterView(object):
                 print("Started move at ({}, {}, {})".format(self._x, self._y, self._z))
                 if(self._z):
                         #Move in x direction
-                        self._plotter_canvas.create_line(self._x, self._y, x, self._y, tags = tk.ALL)
+                        self._plotter_canvas.create_line(5 * self._x, 1000 - 5 * self._y, 5 * x, 1000 - 5 * self._y, tags = tk.ALL)
                         self._x = x
 
                         #Move in y direction
-                        self._plotter_canvas.create_line(self._x, self._y, self._x, y, tags = tk.ALL)
+                        self._plotter_canvas.create_line(5 * self._x, 1000 - 5 * self._y, 5 * self._x, 1000 - 5 * y, tags = tk.ALL)
                         self._y = y
                 else:
                         self._x = x

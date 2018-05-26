@@ -188,6 +188,35 @@ static BaseType_t prvNPolygonCommand(char *pcWriteBuffer, size_t xWriteBufferLen
 
 }
 
+static BaseType_t prvRoseCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
+
+	/* Get parameters from command string */
+	long x1Len, y1Len, sideLengthLen, incrementLen;
+	const char* x1String = FreeRTOS_CLIGetParameter(pcCommandString, 1, &x1Len);
+	const char* y1String = FreeRTOS_CLIGetParameter(pcCommandString, 2, &y1Len);
+	const char* sideLengthString = FreeRTOS_CLIGetParameter(pcCommandString, 3, &sideLengthLen);
+	const char* incrementString = FreeRTOS_CLIGetParameter(pcCommandString, 4, &incrementLen);
+
+	char* x1Remainder, *y1Remainder, *sideLengthRemainder, *incrementRemainder;
+	long x1 = strtol(x1String, &x1Remainder, 10);
+	long y1 = strtol(y1String, &y1Remainder, 10);
+	long sideLength = strtol(sideLengthString, &sideLengthRemainder, 10);
+	long increment = strtol(incrementString, &incrementRemainder, 10);
+
+	Command roseCommand;
+	roseCommand.type = rose;
+	roseCommand.args[0] = x1;
+	roseCommand.args[1] = y1;
+	roseCommand.args[2] = sideLength;
+	roseCommand.args[3] = increment;
+
+	xQueueSendToBack(s4435360_QueueCommands, (void*) &roseCommand, portMAX_DELAY);
+
+	return pdFALSE;
+
+}
+
+
 
 CLI_Command_Definition_t originCommand = {
 		"origin",
@@ -224,6 +253,13 @@ CLI_Command_Definition_t polygonCommand = {
 		4
 };
 
+CLI_Command_Definition_t roseCommand = {
+		"rose",
+		"rose: Draws a compass rose of specified size at (x1, y1).\r\n",
+		prvRoseCommand,
+		4
+};
+
 
 void register_graphics_CLI_commands(void) {
 
@@ -232,4 +268,5 @@ void register_graphics_CLI_commands(void) {
 	FreeRTOS_CLIRegisterCommand(&squareCommand);
 	FreeRTOS_CLIRegisterCommand(&blineCommand);
 	FreeRTOS_CLIRegisterCommand(&polygonCommand);
+	FreeRTOS_CLIRegisterCommand(&roseCommand);
 }

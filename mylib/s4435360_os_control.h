@@ -18,10 +18,10 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 
-typedef enum CommandType{origin, line, square, bline, polygon} CommandType;
+typedef enum CommandType{origin, line, square, bline, polygon, rose} CommandType;
 
 #define DEFAULT_UP_Z_VALUE 			0
-#define DEFAULT_DOWN_Z_VALUE 		30
+#define DEFAULT_DOWN_Z_VALUE 		50
 
 QueueHandle_t s4435360_QueueCommands;
 
