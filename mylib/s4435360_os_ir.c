@@ -54,6 +54,8 @@ void s4435360_IRTask(void) {
 
 	for(EVER) {
 		if(receivedIRFlag) {
+			myprintf("Received %d from IR\r\n", irCommand);
+
 			switch(irCommand) {
 			case PLUS_BUTTON:
 				send_Y_increment_message(10, portMAX_DELAY);

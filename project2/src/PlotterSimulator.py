@@ -35,27 +35,22 @@ class SerialConnection(object):
                         response = str(self._ser.readline(), 'utf-8').strip()
 
         def get_message(self):
-                source = 0;
-                destination = 0;
+                source = -1;
+                destination = -1;
                 message = ''
-
                 
-                while True:
-                        
-                        response = str(self._ser.readline(), 'utf-8').strip()
-                        
-                        if response != '':
-                                if response.startswith("RECEIVED"):
-                                        parts = response.split(' ')
-                                        destination = int((parts[1])[5:])
-                                        source = int((parts[2])[7:])
+                response = str(self._ser.readline(), 'utf-8').strip()
+                
+                if response.startswith("RECEIVED"):
+                        parts = response.split(' ')
+                        destination = int((parts[1])[5:])
+                        source = int((parts[2])[7:])
 
-                                        response = str(self._ser.readline(), 'utf-8').strip()
-                                        if response.startswith("Received from Radio: "):
-                                                message = response.split(': ')[1]
-                                        else:
-                                                message = response
-                                        break
+                        response = str(self._ser.readline(), 'utf-8').strip()
+                        if response.startswith("Received from Radio: "):
+                                message = response.split(': ')[1]
+                        else:
+                                message = response
 
                 return source, destination, message
                                 
@@ -72,6 +67,10 @@ class PlotterView(object):
                 self._x = 0
                 self._y = 0
                 self._z = 0
+
+                #Gcode variables
+                self._units_scaling = 1 #default unit is mm
+                self._mode = 90 #default G90 - absolute movement
 
                 self._master = master
                 master.title("Plotter Simulation")
@@ -107,13 +106,14 @@ class PlotterView(object):
         def update(self):
                 source, destination, message = self._serial.get_message()
                 self._address = destination
-                
+
+                if source == -1:
+                        self._master.after(UPDATE_TIME, self.update)
+                        return
                 if message.startswith('JOIN'):
                         self._joined_address = source
                         self.reset()
-                        print("Joined Address changed to " + str(self._joined_address))
-        
-                        
+                        print("Joined Address changed to " + str(self._joined_address))                
                 elif source == self._joined_address:
                         print(str(destination) + ' received message from ' + str(source) + ': ' + message)
 
@@ -137,7 +137,7 @@ class PlotterView(object):
                 self._master.after(UPDATE_TIME, self.update)
         
         def move_plotter(self, x, y, z):
-                print("Started move at ({}, {}, {})".format(self._x, self._y, self._z))
+                #print("Started move at ({}, {}, {})".format(self._x, self._y, self._z))
                 if(self._z):
                         #Move in x direction
                         self._plotter_canvas.create_line(5 * self._x, 1000 - 5 * self._y, 5 * x, 1000 - 5 * self._y, tags = tk.ALL)
@@ -152,10 +152,66 @@ class PlotterView(object):
 
                 #Move in z direction
                 self._z = z
-                print("Ended move at ({}, {}, {})".format(self._x, self._y, self._z))
+                #print("Ended move at ({}, {}, {})".format(self._x, self._y, self._z))
                 return
 
         def execute_gcode(self):
+                entry = self._gcode_entry.get()
+                #Change units to inches
+                if entry.startswith("G20"):
+                        self._units_scaling = 25.4
+                        print("Changed Gcode units to inches")
+                        
+                #Change units to mm
+                elif entry.startswith("G21"):
+                        self._units_scaling = 1
+                        print("Changed Gcode units to mm")
+                        
+                #Change mode to absolute distance
+                elif entry.startswith("G90"):
+                        self._mode = 90
+                        print("Changed Gcode mode to absolute distance")
+                        
+                #Change mode to incremntal distance
+                elif entry.startswith("G91"):
+                        self._mode = 91
+                        print("Changed Gcode mode to incremental distance")
+
+                #Move
+                elif entry.startswith("G0"):
+                        parts = entry.split(' ')
+                        parts.pop(0)
+                        x = self._x
+                        y = self._y
+                        z = self._z
+                        for part in parts:
+                                if part[0] == 'X':
+                                        value = int(int(part[1:]) * self._units_scaling)
+                                        if self._mode == 90:
+                                                x = value
+                                        else:
+                                                x += value
+
+                                elif part[0] == 'Y':
+                                        value = int(int(part[1:]) * self._units_scaling)
+                                        if self._mode == 90:
+                                                y = value
+                                        else:
+                                                y += value
+                                        
+                                elif part[0] == 'Z':
+                                        value = int(int(part[1:]) * self._units_scaling)
+                                        if self._mode == 90:
+                                                z = value
+                                        else:
+                                                z += value
+                        self.move_plotter(x, y, z)
+                        print("Moved plotter to ({}, {}, {}) from Gcode".format(x, y, z))
+                        
+                        #Update GUI info
+                        self._location_label.config(text = "({}, {}, {})".format(self._x, self._y, self._z))
+                        
+                self._gcode_entry.delete(0, tk.END)
                 return
         
         def reset(self):
