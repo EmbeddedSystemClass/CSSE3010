@@ -30,13 +30,15 @@ int ySequence[100];
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
+
+/**
+  * @brief Task for handling DAC
+  * @param None
+  * @retval None
+  */
 void s4435360_DACTask(void) {
 
 	s4435360_hal_dac_init();
-
-	//Initialise sequences to 0
-	//memset(&xSequence[0], 0, 100);
-	//memset(&ySequence[0], 0, 100);
 
 	int xSequence[16] = {0, 400, 800, 1200, 1600, 1600, 1600, 1600, 1600, 1200, 800, 400, 0, 0, 0, 0};
 	int ySequence[16] = {0, 0, 0, 0, 0, 400, 800, 1200, 1600, 1600, 1600, 1600, 1600, 1200, 800, 400};
@@ -66,15 +68,5 @@ void s4435360_DACTask(void) {
 		}
 
 		vTaskDelay(500);
-	}
-}
-
-void updateDACSequence(DACSequence sequence) {
-	if(!strncmp(sequence.command, "bline", 5)) {
-
-	} else if(!strncmp(sequence.command, "square", 6)) {
-
-	} else if(!strncmp(sequence.command, "line", 4)) {
-
 	}
 }

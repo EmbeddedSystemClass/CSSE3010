@@ -38,10 +38,15 @@
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
+/**
+ * @brief	Handles origin CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvOriginCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
-	//Origin: (0, 0, 0)
-	//send_XYZ_message(0, 0, 0, portMAX_DELAY);
 	Command originCommand;
 	originCommand.type = origin;
 
@@ -49,6 +54,13 @@ static BaseType_t prvOriginCommand(char *pcWriteBuffer, size_t xWriteBufferLen, 
 	return pdFALSE;
 }
 
+/**
+ * @brief	Handles line CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvLineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	/* Get parameters from command string */
@@ -63,23 +75,29 @@ static BaseType_t prvLineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
 	long y = strtol(yString, &yRemainder, 10);
 	long length = strtol(lengthString, &lengthRemainder, 10);
 
-	//if((!strlen(xRemainder)) && (!strlen(yRemainder)) && (!strlen(lengthRemainder))
-	//	&& (strlen(typeString) == 1) && ((typeString[0] == 'h') || (typeString[0] == 'v'))) {
+	if((!strlen(xRemainder)) && (!strlen(yRemainder)) && (!strlen(lengthRemainder))
+		&& (strlen(typeString) == 1) && ((typeString[0] == 'h') || (typeString[0] == 'v'))) {
 
-	Command lineCommand;
-	lineCommand.type = line;
+		Command lineCommand;
+		lineCommand.type = line;
 
-	lineCommand.args[0] = x;
-	lineCommand.args[1] = y;
-	lineCommand.args[2] = typeString[0];
-	lineCommand.args[3] = length;
-	xQueueSendToBack(s4435360_QueueCommands, (void*) &lineCommand, portMAX_DELAY);
-	//send_join_message(portMAX_DELAY);
-	//move_straight(x, y, typeString[0], length);
+		lineCommand.args[0] = x;
+		lineCommand.args[1] = y;
+		lineCommand.args[2] = typeString[0];
+		lineCommand.args[3] = length;
+		xQueueSendToBack(s4435360_QueueCommands, (void*) &lineCommand, portMAX_DELAY);
+	}
 
 	return pdFALSE;
 }
 
+/**
+ * @brief	Handles square CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvSquareCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	/* Get parameters from command string */
@@ -108,6 +126,13 @@ static BaseType_t prvSquareCommand(char *pcWriteBuffer, size_t xWriteBufferLen, 
 
 }
 
+/**
+ * @brief	Handles Bresenham line CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvBlineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	/* Get parameters from command string */
@@ -130,11 +155,6 @@ static BaseType_t prvBlineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, c
 	//	return pdFALSE;
 	//}
 
-	//Bresenham Line Generation
-	//send_join_message(portMAX_DELAY);
-	//send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
-	//bresenham_line(x1, y1, x2, y2, stepSize);
-
 	Command blineCommand;
 	blineCommand.type = bline;
 	blineCommand.args[0] = x1;
@@ -149,8 +169,13 @@ static BaseType_t prvBlineCommand(char *pcWriteBuffer, size_t xWriteBufferLen, c
 
 }
 
-
-
+/**
+ * @brief	Handles n polygon CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvNPolygonCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	/* Get parameters from command string */
@@ -171,10 +196,6 @@ static BaseType_t prvNPolygonCommand(char *pcWriteBuffer, size_t xWriteBufferLen
 	//	return pdFALSE;
 	//}
 
-	//send_join_message(portMAX_DELAY);
-	//send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
-	//n_polygon(n, x1, y1, radius);
-
 	Command polygonCommand;
 	polygonCommand.type = polygon;
 	polygonCommand.args[0] = n;
@@ -188,6 +209,13 @@ static BaseType_t prvNPolygonCommand(char *pcWriteBuffer, size_t xWriteBufferLen
 
 }
 
+/**
+ * @brief	Handles rose compass CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvRoseCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	/* Get parameters from command string */
@@ -217,7 +245,7 @@ static BaseType_t prvRoseCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
 }
 
 
-
+//CLI definition for origin command
 CLI_Command_Definition_t originCommand = {
 		"origin",
 		"origin: Moves the pen to the origin (0, 0, 0) via radio packet.\r\n",
@@ -225,6 +253,7 @@ CLI_Command_Definition_t originCommand = {
 		0
 };
 
+//CLI definition for line command
 CLI_Command_Definition_t lineCommand = {
 		"line",
 		"line: Draws a line from (x1, y1), either horizontal or vertical, of specified length.\r\n",
@@ -232,6 +261,7 @@ CLI_Command_Definition_t lineCommand = {
 		4
 };
 
+//CLI definition for square command
 CLI_Command_Definition_t squareCommand = {
 		"square",
 		"square: Draws a square from (x1, y1) of specified length.\r\n",
@@ -239,6 +269,7 @@ CLI_Command_Definition_t squareCommand = {
 		3
 };
 
+//CLI definition for bresenham line command
 CLI_Command_Definition_t blineCommand = {
 		"bline",
 		"bline: Draws a line from (x1, y1) to (x2, y2) using Bresenham's algorithm.\r\n",
@@ -246,6 +277,7 @@ CLI_Command_Definition_t blineCommand = {
 		5
 };
 
+//CLI definition for polygon command
 CLI_Command_Definition_t polygonCommand = {
 		"polygon",
 		"polygon: Draws an n-sided regular polygon of specified radius starting at (x1, y1).\r\n",
@@ -253,6 +285,7 @@ CLI_Command_Definition_t polygonCommand = {
 		4
 };
 
+//CLI definition for rose compass command
 CLI_Command_Definition_t roseCommand = {
 		"rose",
 		"rose: Draws a compass rose of specified size at (x1, y1).\r\n",
@@ -261,6 +294,11 @@ CLI_Command_Definition_t roseCommand = {
 };
 
 
+/**
+ * @brief	Registers all CLI graphics commands
+ * @param	None
+ * @retval	None
+ */
 void register_graphics_CLI_commands(void) {
 
 	FreeRTOS_CLIRegisterCommand(&originCommand);

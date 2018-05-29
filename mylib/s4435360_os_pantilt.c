@@ -37,6 +37,12 @@
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
+
+/**
+  * @brief Changes the x value of the pantilt tracker
+  * @param x: x value to track
+  * @retval None
+  */
 void s4435360_pantilt_changeX(int x) {
 	float x2 = 1.3 * x;
 	float x3 = x2 - 130.0;
@@ -50,6 +56,11 @@ void s4435360_pantilt_changeX(int x) {
 	}
 }
 
+/**
+  * @brief Changes the y value of the pantilt tracker
+  * @param y: the y value to track
+  * @retval None
+  */
 void s4435360_pantilt_changeY(int y) {
 	int tiltAngle = 55 - RAD_TO_DEG(atan((float)y / 300.0));
 	myprintf("Tilt angle = %d, from %d\r\n", tiltAngle, y);
@@ -58,6 +69,11 @@ void s4435360_pantilt_changeY(int y) {
 	}
 }
 
+/**
+  * @brief Task to control pantilt tracking of plotter
+  * @param None
+  * @retval None
+  */
 void s4435360_TaskPanTilt(void) {
 
 	//Initialise hardware

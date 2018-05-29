@@ -28,6 +28,11 @@ int dacSequenceIndex;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
+/**
+ * @brief Initialises the dac hardware
+ * @param None
+ * @retval None
+ */
 extern void s4435360_hal_dac_init(void) {
 	//Enable DAC clock
 	__HAL_RCC_DAC_CLK_ENABLE();
@@ -89,6 +94,11 @@ extern void s4435360_hal_dac_init(void) {
 
 }
 
+/**
+ * @brief Timer interrupt handler for writing sequences to DAC
+ * @param htim: timer handle type def
+ * @retval None
+ */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	s4435360_hal_dac_y_write(dacYSequence[dacSequenceIndex % dacYSequenceLength]);
 	s4435360_hal_dac_x_write(dacXSequence[dacSequenceIndex % dacXSequenceLength]);

@@ -44,14 +44,27 @@
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
-
+/**
+ * @brief	Handles get sys CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvGetSysCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
-	//unsigned char sysTime = //SOME FUNCTION HERE;
-	//pcWriteBuffer[0] = sysTime;
+	uint32_t sysTime = HAL_GetTick();
+	pcWriteBuffer[0] = sysTime;
 	return pdFALSE;
 }
 
+/**
+ * @brief	Handles set channel CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvSetChanCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	long paramLen;
@@ -68,12 +81,26 @@ static BaseType_t prvSetChanCommand(char *pcWriteBuffer, size_t xWriteBufferLen,
 	return pdFALSE;
 }
 
+/**
+ * @brief	Handles get channel CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvGetChanCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	xWriteBufferLen = sprintf((char *) pcWriteBuffer, "%d\n\r", get_chan());
 	return pdFALSE;
 }
 
+/**
+ * @brief	Handles set transmission address CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvSetTxAddrCommand (char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	long paramLen;
@@ -103,6 +130,13 @@ static BaseType_t prvSetTxAddrCommand (char *pcWriteBuffer, size_t xWriteBufferL
 	return pdFALSE;
 }
 
+/**
+ * @brief	Handles set receive address CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvSetRxAddrCommand (char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	long paramLen;
@@ -132,6 +166,13 @@ static BaseType_t prvSetRxAddrCommand (char *pcWriteBuffer, size_t xWriteBufferL
 	return pdFALSE;
 }
 
+/**
+ * @brief	Handles get receive address CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvGetRxAddrCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	unsigned char* rxAddress = get_rxAddress();
@@ -142,6 +183,13 @@ static BaseType_t prvGetRxAddrCommand(char *pcWriteBuffer, size_t xWriteBufferLe
 	return pdFALSE;
 }
 
+/**
+ * @brief	Handles get transmission address CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvGetTxAddrCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	unsigned char* txAddress = get_txAddress();
@@ -152,6 +200,13 @@ static BaseType_t prvGetTxAddrCommand(char *pcWriteBuffer, size_t xWriteBufferLe
 	return pdFALSE;
 }
 
+/**
+ * @brief	Handles join radio CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvJoinCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	send_join_message(portMAX_DELAY);
@@ -159,6 +214,13 @@ static BaseType_t prvJoinCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
 	return pdFALSE;
 }
 
+/**
+ * @brief	Handles XYZ radio packet CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvXYZCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	/* Get parameters from command string */
@@ -179,6 +241,13 @@ static BaseType_t prvXYZCommand(char *pcWriteBuffer, size_t xWriteBufferLen, con
 
 }
 
+/**
+ * @brief	Handles plotter move CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvMoveCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	/* Get parameters from command string */
@@ -199,6 +268,13 @@ static BaseType_t prvMoveCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
 
 }
 
+/**
+ * @brief	Handles pen CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvPenCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	/* Get parameters from command string */
@@ -217,7 +293,13 @@ static BaseType_t prvPenCommand(char *pcWriteBuffer, size_t xWriteBufferLen, con
 
 }
 
-
+/**
+ * @brief	Handles radio packet transmission CLI commands
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvRadioCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 	RadioMessage message;
 	message.retransmitAttempts = 0;
@@ -231,6 +313,7 @@ static BaseType_t prvRadioCommand(char *pcWriteBuffer, size_t xWriteBufferLen, c
 	return pdFALSE;
 }
 
+//CLI definition for radio command
 CLI_Command_Definition_t radio = {
 		"radio",
 		"radio: Transmits the payload over radio.\r\n",
@@ -238,6 +321,7 @@ CLI_Command_Definition_t radio = {
 		1
 };
 
+//CLI definition for get sys command
 CLI_Command_Definition_t getsys = {
 		"getsys",
 		"getsys: Returns the current system time in ms.\r\n",
@@ -245,6 +329,7 @@ CLI_Command_Definition_t getsys = {
 		0
 };
 
+//CLI definition for set channel command
 CLI_Command_Definition_t setchan = {
 		"setchan",
 		"setchan: Sets the radio channel.\r\n",
@@ -252,6 +337,7 @@ CLI_Command_Definition_t setchan = {
 		1
 };
 
+//CLI definition for get channel command
 CLI_Command_Definition_t getchan = {
 		"getchan",
 		"getchan: Returns the radio's current channel.\r\n",
@@ -259,6 +345,7 @@ CLI_Command_Definition_t getchan = {
 		0
 };
 
+//CLI definition for set transmission address command
 CLI_Command_Definition_t settxaddr = {
 		"settxaddr",
 		"settxaddr: Sets the radio's transmit address.\r\n",
@@ -266,6 +353,7 @@ CLI_Command_Definition_t settxaddr = {
 		1
 };
 
+//CLI definition for set receive address command
 CLI_Command_Definition_t setrxaddr = {
 		"setrxaddr",
 		"setrxaddr: Sets the radio's receive address.\r\n",
@@ -273,6 +361,7 @@ CLI_Command_Definition_t setrxaddr = {
 		1
 };
 
+//CLI definition for get receive address command
 CLI_Command_Definition_t getrxaddr = {
 		"getrxaddr",
 		"getrxaddr: Returns the radio's receive address.\r\n",
@@ -280,6 +369,7 @@ CLI_Command_Definition_t getrxaddr = {
 		0
 };
 
+//CLI definition for get transmission address command
 CLI_Command_Definition_t gettxaddr = {
 		"gettxaddr",
 		"gettxaddr: Returns the radio's transmit address.\r\n",
@@ -287,6 +377,7 @@ CLI_Command_Definition_t gettxaddr = {
 		0
 };
 
+//CLI definition for join radio command
 CLI_Command_Definition_t join = {
 		"join",
 		"join: Sends a join request packet via radio.\r\n",
@@ -294,6 +385,7 @@ CLI_Command_Definition_t join = {
 		0
 };
 
+//CLI definition for XYZ packet command
 CLI_Command_Definition_t xyz = {
 		"xyz",
 		"xyz: Sends an XYZ packet via radio.\r\n",
@@ -301,6 +393,7 @@ CLI_Command_Definition_t xyz = {
 		3
 };
 
+//CLI definition for move packet command
 CLI_Command_Definition_t move = {
 		"move",
 		"move: Moves the pen to the given position via radio packet.\r\n",
@@ -308,6 +401,7 @@ CLI_Command_Definition_t move = {
 		2
 };
 
+//CLI definition for pen command
 CLI_Command_Definition_t pen = {
 		"pen",
 		"pen: Moves the pen up or down via radio packet.\r\n",
@@ -315,7 +409,11 @@ CLI_Command_Definition_t pen = {
 		1
 };
 
-
+/**
+ * @brief	Registers all radio CLI commands
+ * @param	None
+ * @retval	None
+ */
 void register_radio_CLI_commands(void) {
 
 	FreeRTOS_CLIRegisterCommand(&radio);

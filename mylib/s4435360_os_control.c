@@ -35,6 +35,15 @@
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
+
+/**
+  * @brief Processes a move command for the plotter
+  * @param x: the initial x position
+  * 	   y: the initial y position
+  * 	   type: horizonal or vertical line
+  * 	   length: length of the line (mm)
+  * @retval None
+  */
 void move_straight(int x, int y, char type, int length) {
 	if((type != 'h') && (type != 'v')) {
 		return;
@@ -54,6 +63,13 @@ void move_straight(int x, int y, char type, int length) {
 	}
 }
 
+/**
+  * @brief Processes a square command for the plotter
+  * @param x: the initial x position
+  * 	   y: the initial y position
+  * 	   side: the side length (mm)
+  * @retval None
+  */
 void move_square(int x, int y, int side) {
 	//Move to starting position
 	send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
@@ -67,7 +83,15 @@ void move_square(int x, int y, int side) {
 
 }
 
-
+/**
+  * @brief Processes Bresenham line drawing for slopes less than 45
+  * @param x1: the initial x position
+  * 	   y1: the initial y position
+  * 	   x2: the final x position
+  * 	   y2: the final y position
+  * 	   stepSize: the increment size for drawing liness
+  * @retval None
+  */
 void bline_low(int x1, int y1, int x2, int y2, int stepSize) {
 	int dx = x2 - x1;
 	int dy = y2 - y1 > 0 ? y2 - y1 : y1 - y2;
@@ -93,6 +117,15 @@ void bline_low(int x1, int y1, int x2, int y2, int stepSize) {
 	send_XYZ_message(x2, y2, DEFAULT_UP_Z_VALUE, portMAX_DELAY);
 }
 
+/**
+  * @brief Processes Bresenham line drawing for slopes greater than 45 degrees
+  * @param x1: the initial x position
+  * 	   y1: the initial y position
+  * 	   x2: the final x position
+  * 	   y2: the final y position
+  * 	   stepSize: the increment size for drawing lines
+  * @retval None
+  */
 void bline_high(int x1, int y1, int x2, int y2, int stepSize) {
 	int dx = x2 - x1 > 0 ? x2 - x1 : x1 - x2;
 	int dy = y2 - y1;
@@ -118,6 +151,15 @@ void bline_high(int x1, int y1, int x2, int y2, int stepSize) {
 	send_XYZ_message(x2, y2, DEFAULT_UP_Z_VALUE, portMAX_DELAY);
 }
 
+/**
+  * @brief Processes Bresenham line drawing
+  * @param x1: the initial x position
+  * 	   y1: the initial y position
+  * 	   x2: the final x position
+  * 	   y2: the final y position
+  * 	   stepSize: the increment size for drawing lines
+  * @retval None
+  */
 void bresenham_line(int x1, int y1, int x2, int y2, int stepSize) {
 	if(((y2 - y1)*(y2 - y1)) < ((x2 - x1)*(x2 - x1))) {
 		if(x1 > x2) {
@@ -139,6 +181,14 @@ void bresenham_line(int x1, int y1, int x2, int y2, int stepSize) {
 
 }
 
+/**
+  * @brief Processes a n-sided polygon for the plotter
+  * @param n: the number of sides
+  * 	   x1: the initial x position
+  * 	   y1: the initial y position
+  * 	   radius: the size of the polygon
+  * @retval None
+  */
 void n_polygon(int n, int x1, int y1, int radius) {
 	int x[n];
 	int y[n];
@@ -170,6 +220,14 @@ void n_polygon(int n, int x1, int y1, int radius) {
 	bresenham_line(x[n-1], y[n-1], x[0], y[0], radius / 10);
 }
 
+/**
+  * @brief Processes Bresenham line drawing for slopes greater than 45 degrees
+  * @param x1: the initial x position
+  * 	   y1: the initial y position
+  * 	   sideLength: length of sides of underlying hexagon
+  * 	   increment: increment of arcs in degrees
+  * @retval None
+  */
 void compass_rose(int x1, int y1, int sideLength, int increment) {
 	int x[6] = {sideLength, 1.5 * sideLength, sideLength, 0, -0.5 * sideLength, 0};
 	int y[6] = {0, 0.866 * sideLength, 1.732 * sideLength, 1.732 * sideLength, 0.866 * sideLength, 0};
@@ -200,6 +258,11 @@ void compass_rose(int x1, int y1, int sideLength, int increment) {
 	}
 }
 
+/**
+  * @brief Task for controlling commands for the plotter
+  * @param None
+  * @retval None
+  */
 void s4435360_TaskControl(void) {
 
 	s4435360_QueueCommands = xQueueCreate(COMMAND_QUEUE_LENGTH, sizeof(Command));
@@ -249,7 +312,6 @@ void s4435360_TaskControl(void) {
 				default:
 					myprintf("Received unrecognisable command.\r\n");
 					break;
-
 			}
 		}
 	}

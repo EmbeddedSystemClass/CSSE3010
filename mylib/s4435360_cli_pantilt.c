@@ -41,6 +41,13 @@
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
+/**
+ * @brief	Handles pantilt position CLI commands, for testing
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvPantiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	/* Get parameters from command string */
@@ -60,6 +67,13 @@ static BaseType_t prvPantiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen,
 
 }
 
+/**
+ * @brief	Handles pantilt angle CLI commands, for testing
+ * @param	pcWriteBuffer: buffer to write command outputs to
+ * 			xWriteBufferLen: length of chars written to the buffer
+ * 			pcCommandString: the input command
+ * @retval	returns pdFALSE
+ */
 static BaseType_t prvPantiltAngleCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
 	/* Get parameters from command string */
@@ -78,6 +92,7 @@ static BaseType_t prvPantiltAngleCommand(char *pcWriteBuffer, size_t xWriteBuffe
 
 }
 
+//CLI definition for pantilt position command
 CLI_Command_Definition_t pantilt = {
 	"pantilt",
 	"pantilt: moves the pantilt to point at the specified (x, y).\r\n",
@@ -85,6 +100,7 @@ CLI_Command_Definition_t pantilt = {
 	2
 };
 
+//CLI definition for pantilt angle command
 CLI_Command_Definition_t pantiltangle = {
 	"pantiltangle",
 	"pantilt angle: moves the pantilt to the specified angle.\r\n",
@@ -93,6 +109,11 @@ CLI_Command_Definition_t pantiltangle = {
 };
 
 
+/**
+ * @brief	Register all pantilt CLI commands
+ * @param	None
+ * @retval	None
+ */
 void register_pantilt_CLI_commands(void) {
 
 	FreeRTOS_CLIRegisterCommand(&pantilt);

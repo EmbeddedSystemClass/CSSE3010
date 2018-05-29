@@ -65,29 +65,70 @@ void FSMProcessing_Task(void);
 void Acknowledgment_Task(void);
 //Private functions ---------------------------------------------------------
 
+/**
+  * @brief Returns the transmission address of the radio
+  * @param None
+  * @retval the radio transmission address
+  */
 unsigned char* get_txAddress(void) {
 	return txAddress;
 }
 
+/**
+  * @brief Returns the receive address of the radio
+  * @param None
+  * @retval the radio receive address
+  */
 unsigned char* get_rxAddress(void) {
 	return rxAddress;
 }
 
+/**
+  * @brief Returns the radio's current channel
+  * @param None
+  * @retval the radio channel
+  */
 unsigned char get_chan(void) {
 	return channel;
 }
 
+/**
+  * @brief Sets the radios receive address
+  * @param addr: the receive address
+  * @retval None
+  */
 void set_rxAddress(unsigned char* addr) {
 	memcpy((void*) rxAddress, (void*) addr, 4);
 }
 
+/**
+  * @brief Sets the radio's transmission address
+  * @param addr: the transmission address
+  * @retval None
+  */
 void set_txAddress(unsigned char* addr) {
 	memcpy((void*) txAddress, (void*) addr, 4);
 }
 
+/**
+  * @brief Sets the radio's channel
+  * @param chan: the radio channel
+  * @retval None
+  */
 void set_chan(unsigned char chan) {
 	channel = chan;
 }
+
+/**
+  * @brief Sends a message via radio
+  * @param
+  * 	payload: the payload to send
+  * 	payloadLength: the length of the payload to send
+  * 	retransmitAttempts: the number of attempts to retransmit this packet
+  * 	waitTime: the time to wait adding this message to the queue
+  * 	isXYZ: whether this message is an XYZ message, needs pantilt tracking
+  * @retval None
+  */
 void send_radio_message(char* payload, int payloadLength, int retransmitAttempts, int waitTime, int isXYZ) {
 	RadioMessage message;
 
@@ -99,6 +140,15 @@ void send_radio_message(char* payload, int payloadLength, int retransmitAttempts
 	xQueueSendToBack(txMessageQueue, ( void * ) &message, ( TickType_t ) waitTime);
 }
 
+/**
+  * @brief Sends an XYZ packet via radio
+  * @param
+  * 	x: the x value
+  * 	y: the y value
+  * 	z: the z value
+  * 	waitTime: the time to block to add the message to the queue
+  * @retval None
+  */
 void send_XYZ_message(int x, int y, int z, int waitTime) {
 	char xyzPayload[11];
 	sprintf(xyzPayload, "XYZ%03d%03d%02d", x, y, z);
@@ -112,32 +162,76 @@ void send_XYZ_message(int x, int y, int z, int waitTime) {
 	s4435360_pantilt_changeY(lastY);
 }
 
+/**
+  * @brief Sends a radio packet to increment the current X position
+  * @param
+  * 	increment: the amount to increment
+  * 	waitTime: the time to block to add the message to the queue
+  * @retval None
+  */
 void send_X_increment_message(int increment, int waitTime) {
 	lastX += increment;
 	send_XYZ_message(lastX, lastY, lastZ, waitTime);
 }
 
+/**
+  * @brief Sends a radio packet to increment the current Y position
+  * @param
+  * 	increment: the amount to increment
+  * 	waitTime: the time to block to add the message to the queue
+  * @retval None
+  */
 void send_Y_increment_message(int increment, int waitTime) {
 	lastY += increment;
 	send_XYZ_message(lastX, lastY, lastZ, waitTime);
 }
 
+/**
+  * @brief Sends a radio packet to change the Z position
+  * @param
+  * 	z: the new z value
+  * 	waitTime: the time to block to add the message to the queue
+  * @retval None
+  */
 void send_Z_message(int z, int waitTime) {
 	send_XYZ_message(lastX, lastY, z, waitTime);
 	lastZ = z;
 }
 
+/**
+  * @brief Sends a radio packet to change the X and Y position
+  * @param
+  * 	x: the new x value
+  * 	y: the new y value
+  * 	waitTime: the time to block to add the message to the queue
+  * @retval None
+  */
 void send_XY_message(int x, int y, int waitTime) {
 	send_XYZ_message(x, y, lastZ, waitTime);
 	lastX = x;
 	lastY = y;
 }
 
+
+/**
+  * @brief Sends a join message via radio
+  * @param
+  * 	waitTime: the time to block to add the message to the queue
+  * @retval None
+  */
 void send_join_message(int waitTime) {
 	char* joinPayload = "JOIN";
 	send_radio_message(joinPayload, 4, 0, waitTime, 0);
 }
 
+/**
+  * @brief Forms the specified payload into the packet
+  * @param
+  * 	payload: the payload to form into a packet
+  * 	payloadLength: the length of the payload
+  * 	packet: the paket to form the payload into
+  * @retval None
+  */
 void form_packet(char* payload, int payloadLength, char* packet) {
 
 	//Add packet header
@@ -156,6 +250,11 @@ void form_packet(char* payload, int payloadLength, char* packet) {
 	}
 }
 
+/**
+  * @brief Task for managing radio communication
+  * @param None
+  * @retval None
+  */
 extern void s4435360_TaskRadio(void) {
 
 	//Initialise hardware
@@ -248,6 +347,12 @@ extern void s4435360_TaskRadio(void) {
 	}
 }
 
+
+/**
+  * @brief Task for managing the radio acknowledgment procedure
+  * @param None
+  * @retval None
+  */
 void Acknowledgment_Task(void) {
 	myprintf("Started ack\r\n");
 

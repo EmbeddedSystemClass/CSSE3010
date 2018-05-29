@@ -201,6 +201,13 @@ HammingDecodedOutput hamming_byte_decoder(uint16_t input) {
 
 }
 
+/**
+ * @brief Hamming decodes a payload into the specified buffer
+ * @param decodedBuffer: the buffer to decode the payload into
+ * 		  payload: the payload to decode
+ * 		  length: the length of the payload to decode
+ * @retval returns whether the payload was successfully decoded
+ */
 int hamming_decode_payload(char* decodedBuffer, char* payload, int length) {
 
 	HammingDecodedOutput hammingOutput;

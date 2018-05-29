@@ -47,7 +47,11 @@
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
-
+/**
+  * @brief Task for handling IR inputs
+  * @param None
+  * @retval None
+  */
 void s4435360_IRTask(void) {
 
 	s4435360_hal_ir_rx_init();
@@ -84,7 +88,6 @@ void s4435360_IRTask(void) {
 			receivedIRFlag = 0;
 			irCommand = 0;
 		}
-
 		vTaskDelay(500);
 	}
 }

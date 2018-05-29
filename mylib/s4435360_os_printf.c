@@ -37,6 +37,12 @@ typedef struct {
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
+/**
+  * @brief Sends messages to the queue for thread safe printing
+  * @param format: the printf format specifier
+  * 	   ...: variable number of args to fill format specifier
+  * @retval None
+  */
 void send_to_queue(const char* format, ...) {
 	
 	PrintElement message = {0};
@@ -51,6 +57,11 @@ void send_to_queue(const char* format, ...) {
 	}
 }
 
+/**
+  * @brief Task to handle thread safe printing
+  * @param None
+  * @retval None
+  */
 void s4435360_TaskPrintf(void) {
 
 	s4435360_QueuePrintf = xQueueCreate(PRINTF_QUEUE_LENGTH, sizeof(PrintElement));

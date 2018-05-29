@@ -16,6 +16,7 @@
 
 #define UNCORRECTABLE_ERROR		0xFE
 
+//Struct for decoded hamming output
 typedef struct {
 
 	uint8_t decodedOutput;

@@ -18,6 +18,7 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 
+//Queue for thread safe printing
 QueueHandle_t s4435360_QueuePrintf;
 
 void s4435360_TaskPrintf(void);

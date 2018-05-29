@@ -23,6 +23,10 @@ TIM_OC_InitTypeDef carrierConfig;
 
 TIM_HandleTypeDef rx_TIM_Init;
 TIM_IC_InitTypeDef sICConfig;
+
+//NEC protocol IR receive variables
+int stage = 0;
+uint32_t lastCaptureValue = 0;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 uint32_t PrescalerValue;
@@ -80,8 +84,6 @@ void s4435360_hal_ir_rx_init(void) {
 	irCommand = 0;
 }
 
-int stage = 0;
-uint32_t lastCaptureValue = 0;
 
 /**
  * @brief Callback routine for input compare matches for IR receiver

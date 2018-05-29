@@ -30,6 +30,11 @@ ADC_ChannelConfTypeDef AdcChanConfig2;
 #define s4435360_hal_joystick_x_read() joystick_read(AdcHandleX)
 #define s4435360_hal_joystick_y_read() joystick_read(AdcHandleY)
 
+/**
+  * @brief Reads and returns a value from the specified ADC
+  * @param AdcHandle: the handle for the ADC to read
+  * @retval returns the read ADC value
+  */
 int joystick_read(ADC_HandleTypeDef AdcHandle) {
 
 	/* Start ADC conversion */
@@ -42,6 +47,11 @@ int joystick_read(ADC_HandleTypeDef AdcHandle) {
 	return (uint16_t)(HAL_ADC_GetValue(&AdcHandle));
 }
 
+/**
+  * @brief  Initialises the joystick hardware
+  * @param None
+  * @retval None
+  */
 void s4435360_hal_joystick_init(void) {
 
 	GPIO_InitTypeDef GPIO_InitStructure;
