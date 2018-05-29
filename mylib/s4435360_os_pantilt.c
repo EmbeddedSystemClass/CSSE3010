@@ -38,12 +38,12 @@
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 void s4435360_pantilt_changeX(int x) {
-	float x2 = 1.5 * x;
-	float x3 = x2 - 150.0;
+	float x2 = 1.3 * x;
+	float x3 = x2 - 130.0;
 	float x4 = x3 / 300.0;
 	float angleRadians = atan(x4);
 	int panAngle = -1 * RAD_TO_DEG(angleRadians);
-	myprintf("%d, %f, %f, %f, %f, %d\r\n", x, x2, x3, x4, angleRadians, panAngle);
+	myprintf("%d, %d\r\n", x, panAngle);
 
 	if(s4435360_QueuePan != NULL) {
 		xQueueSendToBack(s4435360_QueuePan, ( void * ) &panAngle, portMAX_DELAY);
@@ -51,7 +51,7 @@ void s4435360_pantilt_changeX(int x) {
 }
 
 void s4435360_pantilt_changeY(int y) {
-	int tiltAngle = RAD_TO_DEG(atan((float)y / 300.0)) - 90;
+	int tiltAngle = 55 - RAD_TO_DEG(atan((float)y / 300.0));
 	myprintf("Tilt angle = %d, from %d\r\n", tiltAngle, y);
 	if(s4435360_QueueTilt != NULL) {
 		xQueueSendToBack(s4435360_QueueTilt, ( void * ) &tiltAngle, portMAX_DELAY);

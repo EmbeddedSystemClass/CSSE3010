@@ -57,28 +57,28 @@ void s4435360_IRTask(void) {
 			myprintf("Received %d from IR\r\n", irCommand);
 
 			switch(irCommand) {
-			case PLUS_BUTTON:
-				send_Y_increment_message(10, portMAX_DELAY);
-				myprintf("Moved up from IR command\r\n");
-				break;
+				case PLUS_BUTTON:
+					send_Y_increment_message(10, portMAX_DELAY);
+					myprintf("Moved up from IR command\r\n");
+					break;
 
-			case MINUS_BUTTON:
-				send_Y_increment_message(-10, portMAX_DELAY);
-				myprintf("Moved down from IR command\r\n");
-				break;
+				case MINUS_BUTTON:
+					send_Y_increment_message(-10, portMAX_DELAY);
+					myprintf("Moved down from IR command\r\n");
+					break;
 
-			case LEFT_BUTTON:
-				send_X_increment_message(-10, portMAX_DELAY);
-				myprintf("Moved left from IR command\r\n");
-				break;
+				case LEFT_BUTTON:
+					send_X_increment_message(-10, portMAX_DELAY);
+					myprintf("Moved left from IR command\r\n");
+					break;
 
-			case RIGHT_BUTTON:
-				send_X_increment_message(10, portMAX_DELAY);
-				myprintf("Moved right from IR command\r\n");
-				break;
+				case RIGHT_BUTTON:
+					send_X_increment_message(10, portMAX_DELAY);
+					myprintf("Moved right from IR command\r\n");
+					break;
 
-			default:
-				break;
+				default:
+					break;
 			}
 
 			receivedIRFlag = 0;

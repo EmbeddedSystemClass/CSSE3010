@@ -36,6 +36,7 @@
 #include "stm32f4xx_hal_dac.h"
 #include "s4435360_os_control.h"
 #include "s4435360_os_ir.h"
+#include "s4435360_cli_pantilt.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -59,34 +60,6 @@ void CLI_Task(void);
 #define DAC_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE * 5 )
 #define CONTROL_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE * 5 )
 #define IR_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE * 3 )
-
-
-static BaseType_t prvPantiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
-
-	myprintf("pantilt command\r\n");
-	/* Get parameters from command string */
-	long xLen, yLen;
-	const char* xString = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xLen);
-	const char* yString = FreeRTOS_CLIGetParameter(pcCommandString, 2, &yLen);
-
-	char* xRemainder, *yRemainder;
-	long x = strtol(xString, &xRemainder, 10);
-	long y = strtol(yString, &yRemainder, 10);
-
-	s4435360_pantilt_changeX(x);
-	s4435360_pantilt_changeY(y);
-	xSemaphoreGive(s4435360_SemaphoreUpdatePantilt);
-
-	return pdFALSE;
-
-}
-
-CLI_Command_Definition_t pantilt = {
-	"pantilt",
-	"pantilt: moves the pantilt to point at the specified (x, y).\r\n",
-	prvPantiltCommand,
-	2
-};
 
 
 
@@ -113,13 +86,13 @@ int main( void ) {
 				CONTROL_TASK_STACK_SIZE, NULL, CONTROL_TASK_PRIORITY, NULL);
 	xTaskCreate( (void *) &s4435360_IRTask, (const char *) "IR",
 			IR_TASK_STACK_SIZE, NULL, IR_TASK_PRIORITY, NULL);
-	//xTaskCreate( (void *) &s4435360_TaskPanTilt, (const char *) "PANTILT",
-	//		PANTILT_TASK_STACK_SIZE, NULL, PANTILT_TASK_PRIORITY, NULL);
+	xTaskCreate( (void *) &s4435360_TaskPanTilt, (const char *) "PANTILT",
+			PANTILT_TASK_STACK_SIZE, NULL, PANTILT_TASK_PRIORITY, NULL);
 	//xTaskCreate((void*) &s4435360_DACTask, (const char*) "DAC",
 	//		DAC_TASK_STACK_SIZE, NULL, DAC_TASK_PRIORITY, NULL);
 	/* Register CLI commands */
 	register_radio_CLI_commands();
-	FreeRTOS_CLIRegisterCommand(&pantilt);
+	register_pantilt_CLI_commands();
 
 	/* Start the scheduler. */
 	vTaskStartScheduler();

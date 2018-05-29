@@ -57,7 +57,7 @@ void s4435360_TaskPrintf(void) {
 
 	PrintElement messageToPrint = {0};
 	for(EVER) {
-		if(xQueueReceive(s4435360_QueuePrintf, &messageToPrint, 100)) {
+		if(xQueueReceive(s4435360_QueuePrintf, &messageToPrint, portMAX_DELAY)) {
 			debug_printf(messageToPrint.message);
 		}
 	}

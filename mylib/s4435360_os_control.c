@@ -208,7 +208,7 @@ void s4435360_TaskControl(void) {
 	Command command;
 
 	for(EVER) {
-		if(xQueueReceive(s4435360_QueueCommands, &command, 500)) {
+		if(xQueueReceive(s4435360_QueueCommands, &command, portMAX_DELAY)) {
 			myprintf("%d\r\n", command.type);
 			switch(command.type) {
 				case origin:
