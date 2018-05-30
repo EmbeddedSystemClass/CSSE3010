@@ -96,7 +96,7 @@ class PlotterView(object):
                 self._gcode_button.pack(side = tk.LEFT)
 
                 #Plotter plane
-                self._plotter_canvas = tk.Canvas(master, bg = 'white', height = 1000, width = 1000)
+                self._plotter_canvas = tk.Canvas(master, bg = 'white', height = 800, width = 800)
                 self._plotter_canvas.pack(side = tk.TOP)
 
                        
@@ -112,11 +112,13 @@ class PlotterView(object):
                         return
                 if message.startswith('JOIN'):
                         self._joined_address = source
+                        self._x = 0
+                        self._y = 0
+                        self._z = 0
                         self.reset()
-                        print("Joined Address changed to " + str(self._joined_address))                
+                        print("Joined Address changed to " + str(self._joined_address))
                 elif source == self._joined_address:
                         print(str(destination) + ' received message from ' + str(source) + ': ' + message)
-
                         if message.startswith("XYZ"):
                                 x = int(message[3:6])
                                 y = int(message[6:9])
@@ -140,11 +142,11 @@ class PlotterView(object):
                 #print("Started move at ({}, {}, {})".format(self._x, self._y, self._z))
                 if(self._z):
                         #Move in x direction
-                        self._plotter_canvas.create_line(5 * self._x, 1000 - 5 * self._y, 5 * x, 1000 - 5 * self._y, tags = tk.ALL)
+                        self._plotter_canvas.create_line(4 * self._x, 800 - 4 * self._y, 4 * x, 800 - 4 * self._y, tags = tk.ALL)
                         self._x = x
 
                         #Move in y direction
-                        self._plotter_canvas.create_line(5 * self._x, 1000 - 5 * self._y, 5 * self._x, 1000 - 5 * y, tags = tk.ALL)
+                        self._plotter_canvas.create_line(4 * self._x, 800 - 4 * self._y, 4 * self._x, 800 - 4 * y, tags = tk.ALL)
                         self._y = y
                 else:
                         self._x = x

@@ -294,6 +294,7 @@ void s4435360_TaskControl(void) {
 					send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
 					bresenham_line(command.args[0], command.args[1],
 							command.args[2], command.args[3], command.args[4]);
+					myprintf("Finished bline\r\n");
 					break;
 
 				case polygon:
@@ -301,12 +302,14 @@ void s4435360_TaskControl(void) {
 					send_Z_message(DEFAULT_UP_Z_VALUE, portMAX_DELAY);
 					n_polygon(command.args[0], command.args[1],
 							command.args[2], command.args[3]);
+					myprintf("Finished polygon\r\n");
 					break;
 
 				case rose:
 					send_join_message(portMAX_DELAY);
 					compass_rose(command.args[0], command.args[1],
 							command.args[2], command.args[3]);
+					myprintf("Finished rose\r\n");
 					break;
 
 				default:

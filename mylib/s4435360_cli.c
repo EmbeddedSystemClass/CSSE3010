@@ -40,7 +40,7 @@
 /* Private functions ---------------------------------------------------------*/
 
 /**
-  * @brief  CLI Receive Task.
+  * @brief  Task for processing command line interface
   * @param  None
   * @retval None
   */

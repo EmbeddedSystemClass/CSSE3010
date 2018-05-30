@@ -53,8 +53,7 @@
  */
 static BaseType_t prvGetSysCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
-	uint32_t sysTime = HAL_GetTick();
-	pcWriteBuffer[0] = sysTime;
+	xWriteBufferLen = sprintf((char *) pcWriteBuffer, "%d\n\r", HAL_GetTick());
 	return pdFALSE;
 }
 

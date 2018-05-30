@@ -157,6 +157,8 @@ void send_XYZ_message(int x, int y, int z, int waitTime) {
 	lastY = y;
 	lastZ = z;
 
+	myprintf("(%d, %d, %d) added to queue\r\n", lastX, lastY, lastZ);
+
 	send_radio_message(xyzPayload, 11, 0, waitTime, 1);
 	s4435360_pantilt_changeX(lastX);
 	s4435360_pantilt_changeY(lastY);
