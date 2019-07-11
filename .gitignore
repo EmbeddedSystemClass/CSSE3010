@@ -1,19 +1,13 @@
-/Release/
-/Debug/
-*.o
-*.d
-.DS_Store
-*.project
-*.cproject
+# Build Artifacts
+/**/build/
+/**/Release/
+/**/.settings/
+/**/Debug/
+
+# Other files
 *.xml
-*.cfg
-*.gitignore
+.project
+.cproject
 *.ld
-*.mk
-*.map
-*.list
-*.bin
-*.settings.xml
-*.language.settings.xml
-/LinkerScript.ld
-/makefile
+*.cfg
+*.PNG

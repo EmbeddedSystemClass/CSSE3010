@@ -35,7 +35,7 @@ unsigned char rxAddress[5] = {0x07, 0x36, 0x35, 0x44, 0x00};
 unsigned char channel = 52;
 int userCharCount = 0;
 char inputChar;
-uint8_t userPacket[16] = {0x20,					//Packet type
+uint8_t userPacket[16] = {0xA1,					//Packet type
 		0x52, 0x33, 0x22, 0x11,					//Destination address
 		0x07, 0x36, 0x35, 0x44}; 				//Source address
 
@@ -228,11 +228,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	s4435360_radio_fsmprocessing();
 }
 
-/**
-  * @brief Interrupt handler for TIM3
-  * @param  None
-  * @retval None
-  */
 void TIM3_IRQHandler(void) {
 	HAL_TIM_IRQHandler(&fsmTimInit);
 }
+
+

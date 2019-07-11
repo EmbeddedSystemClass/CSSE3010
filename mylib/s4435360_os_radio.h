@@ -20,7 +20,7 @@
 
 //Default Z values
 #define DEFAULT_UP_Z_VALUE 			0
-#define DEFAULT_DOWN_Z_VALUE 		50
+#define DEFAULT_DOWN_Z_VALUE 		45
 
 //Radio message details
 typedef struct {

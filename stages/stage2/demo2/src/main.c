@@ -132,7 +132,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
  */
 void TIM2_IRQHandler(void) {
 	HAL_TIM_IRQHandler(&TIM_Init);
-
 }
 
 /**

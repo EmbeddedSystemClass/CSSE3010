@@ -27,10 +27,10 @@
 #define EVER ;;
 
 /* Task stack size definitions */
-#define TASK1_STACK_SIZE		( configMINIMAL_STACK_SIZE * 2 )
-#define CLI_STACK_SIZE			( configMINIMAL_STACK_SIZE * 2 )
-#define PRINTF_STACK_SIZE		( configMINIMAL_STACK_SIZE * 2 )
-#define PANTILT_STACK_SIZE		( configMINIMAL_STACK_SIZE * 2 )
+#define TASK1_STACK_SIZE		( configMINIMAL_STACK_SIZE * 20 )
+#define CLI_STACK_SIZE			( configMINIMAL_STACK_SIZE * 20 )
+#define PRINTF_STACK_SIZE		( configMINIMAL_STACK_SIZE * 20 )
+#define PANTILT_STACK_SIZE		( configMINIMAL_STACK_SIZE * 20 )
 
 /* Task priority definitions*/
 #define TASK1_PRIORITY			( tskIDLE_PRIORITY + 2 )
@@ -90,6 +90,7 @@ void vApplicationStackOverflowHook( xTaskHandle pxTask, signed char *pcTaskName 
 
 	portDISABLE_INTERRUPTS();
 	debug_printf("Stack overflow for: '%s'\r\n", pcTaskName);
+	portENABLE_INTERRUPTS();
 
 	for( EVER );
 }
